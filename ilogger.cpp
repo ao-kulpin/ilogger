@@ -66,7 +66,8 @@ LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
     return CallNextHookEx(NULL, nCode, wParam, lParam);
 }
 
-int main() {
+int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, 
+    LPSTR lpszCmdLine, int nCmdShow) {
     HHOOK keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, GetModuleHandle(NULL), 0);
     HHOOK mouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseProc, GetModuleHandle(NULL), 0);
 

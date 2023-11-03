@@ -17,7 +17,7 @@ DWORD WINAPI SenderThreadFunc(LPVOID param) {
             }
         } else 
             cerr << "\n*** invalid input message \"" << line << "\"\n";
-        Sleep(100);
+        // Sleep(100);
     }
 
     cerr << "\n*** Sender ended\n";
@@ -32,7 +32,7 @@ static bool ParseLine(const string line, INPUT& msg) {
 
     char mousePressStr  [] = "Mouse button press: ";
     char mouseReleaseStr[] = "Mouse button release: ";
-    char mouseWheelStr  [] = "Mouse Wheel: ";
+    char mouseWheelStr  [] = "Mouse wheel: ";
     char mouseMoveStr   [] = "Mouse move: ";
     char keyPressStr    [] = "Key press: ";
     char keyReleaseStr  [] = "Key release: ";
@@ -40,13 +40,13 @@ static bool ParseLine(const string line, INPUT& msg) {
     if (auto mousePressPtr = strstr(linePtr, mousePressStr)) {
         msg.type = INPUT_MOUSE;
         mousePressPtr += sizeof (mousePressStr) - 1;
-        if (strstr(mousePressPtr, " LEFT")) {
+        if (strstr(mousePressPtr, "LEFT")) {
             mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
             return true;
-        } else if (strstr(mousePressPtr, " RIGHT")) {
+        } else if (strstr(mousePressPtr, "RIGHT")) {
             mi.dwFlags = MOUSEEVENTF_RIGHTDOWN;
             return true;
-        } else if (strstr(mousePressPtr, " MIDDLE")) {
+        } else if (strstr(mousePressPtr, "MIDDLE")) {
             mi.dwFlags = MOUSEEVENTF_MIDDLEDOWN;
             return true;
         } else
@@ -55,13 +55,13 @@ static bool ParseLine(const string line, INPUT& msg) {
     else if (auto mouseReleasePtr = strstr(linePtr, mouseReleaseStr)) {
         msg.type = INPUT_MOUSE;
         mouseReleasePtr += sizeof (mouseReleaseStr) - 1;
-        if (strstr(mouseReleasePtr, " LEFT")) {
+        if (strstr(mouseReleasePtr, "LEFT")) {
             mi.dwFlags = MOUSEEVENTF_LEFTUP;
             return true;
-        } else if (strstr(mouseReleasePtr, " RIGHT")) {
+        } else if (strstr(mouseReleasePtr, "RIGHT")) {
             mi.dwFlags = MOUSEEVENTF_RIGHTUP;
             return true;
-        } else if (strstr(mouseReleasePtr, " MIDDLE")) {
+        } else if (strstr(mouseReleasePtr, "MIDDLE")) {
             mi.dwFlags = MOUSEEVENTF_MIDDLEUP;
             return true;
         } else
@@ -70,10 +70,10 @@ static bool ParseLine(const string line, INPUT& msg) {
         msg.type = INPUT_MOUSE;
         mi.dwFlags = MOUSEEVENTF_WHEEL;
         mouseWheelPtr += sizeof (mouseWheelStr) - 1;
-        if (strstr(mouseWheelPtr, " UP")) {
+        if (strstr(mouseWheelPtr, "UP")) {
             mi.mouseData = WHEEL_DELTA;
             return true;
-        } else if (strstr(mouseWheelPtr, " DOWN")) {
+        } else if (strstr(mouseWheelPtr, "DOWN")) {
             mi.mouseData = -WHEEL_DELTA;
             return true;
         } else

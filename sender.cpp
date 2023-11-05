@@ -23,6 +23,9 @@ DWORD WINAPI SenderThreadFunc(LPVOID param) {
     cerr << "\n*** Sender ended\n";
 }
 
+static const double xFactor = 65535.0 / (GetSystemMetrics(SM_CXSCREEN) - 1);
+static const double yFactor = 65535.0 / (GetSystemMetrics(SM_CYSCREEN) - 1);
+
 static bool ParseLine(const string line, INPUT& msg) {
     memset(&msg, 0, sizeof msg);
     auto& mi = msg.mi;
@@ -80,20 +83,20 @@ static bool ParseLine(const string line, INPUT& msg) {
             return false;
     } else if (auto mouseMovePtr = strstr(linePtr, mouseMoveStr)) {
         msg.type = INPUT_MOUSE;
-        mi.dwFlags = MOUSEEVENTF_MOVE;
+        mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE;
 
         mouseMovePtr += sizeof (mouseMoveStr) - 1;
         if (auto xPtr = strstr(mouseMovePtr, "X=")) {
             xPtr += 2; // length of "X="
             char* endPtr = 0;
-            mi.dx = strtol(xPtr, &endPtr, 10);
+            mi.dx = LONG(strtol(xPtr, &endPtr, 10) * xFactor);
             if (xPtr == endPtr)
                 // no number found
                 return false;
             if (auto yPtr = strstr(endPtr, "Y=")) {
                 yPtr += 2; // length of "Y="
                 endPtr = 0;
-                mi.dy = strtol(yPtr, &endPtr, 10);
+                mi.dy = LONG(strtol(yPtr, &endPtr, 10) * yFactor);
                 if (yPtr == endPtr)
                     // no number found
                     return false;

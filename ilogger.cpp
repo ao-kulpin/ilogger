@@ -2,6 +2,9 @@
 #include <Windows.h>
 
 #include "sender.hpp"
+#include "option.hpp"
+
+Option option;
 
 LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode >= 0) {
@@ -70,6 +73,10 @@ LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
 
 int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, 
     LPSTR lpszCmdLine, int nCmdShow) {
+std::cerr << "cmdLine: \"" << lpszCmdLine << "\"\n";
+if (!option.acceptArgs(lpszCmdLine))
+    return 1;
+std::cerr << "--skip " << option.skip() << std::endl;
     HHOOK keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, GetModuleHandle(NULL), 0);
     HHOOK mouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseProc, GetModuleHandle(NULL), 0);
 

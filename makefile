@@ -1,2 +1,4 @@
-all:
-	g++ ilogger.cpp sender.cpp -o ilogger
+windows:
+	g++ ilogger.cpp sender.cpp option.cpp -o ilogger
+
+linux:

@@ -59,6 +59,8 @@ cerr << "acceptArgs1 "    << cmdLine << endl;
         char c = *iPtr;
         if (c == 0 || isspace(c)) {
             *oPtr = 0;                  // end of an argument
+            if (argv[argc] == oPtr) 
+                --argc;                 // skip the empty argument    
             argv[++argc] = ++oPtr;      // begin a next argument
         }
         if (c == 0)

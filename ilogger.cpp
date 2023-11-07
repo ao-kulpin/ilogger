@@ -73,12 +73,13 @@ LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
 
 int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, 
     LPSTR lpszCmdLine, int nCmdShow) {
-std::cerr << "cmdLine: \"" << lpszCmdLine << "\"\n";
     if (!option.acceptArgs(lpszCmdLine)) {
         std::cerr << "\n*** Invalid arguments: \"" << lpszCmdLine << "\"\n";
         return 1;
     }
 std::cerr << "--skip " << option.skip() << std::endl;
+std::cerr << "--ioformat " << int(option.ioformat()) << std::endl;
+std::cerr << "--ownaction " << int(option.ownAction()) << std::endl;
     HHOOK keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, GetModuleHandle(NULL), 0);
     HHOOK mouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseProc, GetModuleHandle(NULL), 0);
 

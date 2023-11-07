@@ -16,30 +16,45 @@ bool Option::acceptArgs(int argc, char* argv[]) {
     };
 
     int c = 0;
+    //////opterr = 0;
     while (c != -1)
     {
-        c = getopt_long(argc, argv, 0, longOptions, &optIndex);
+        int curind = optind;
+        c = getopt_long(argc, argv, "\x01", longOptions, &optIndex);
         switch (c)
         {
         case -1: // end of list
+            {
+                const char* rest = argv[curind];
+                if (rest && *rest) {
+                    // unrecognized rest
+                    cerr << "\n*** Unknown input \"" << argv[curind] << "\"\n";
+                    return false;
+                }
+            }
             break;
 
         case 1: // --skip
-        {
-            assert(optIndex == 0);
+            {
+                assert(optIndex == 0);
 
-            char* endPtr = 0;
-            _skip = strtol(optarg, &endPtr, 10);
-            if ( _skip < 0 || _skip > 1000 || endPtr == optarg) {
-                cerr << "\n*** Invalid --skip \"" << optarg << "\"\n";
+                char* endPtr = 0;
+                _skip = strtol(optarg, &endPtr, 10);
+                    if ( _skip < 0 || _skip > 1000 || endPtr == optarg) {
+                    cerr << "\n*** Invalid --skip \"" << optarg << "\"\n";
                 return false;
             }
 
             break;
         }
-        
+
+        case '?':
+            cerr << "\n*** Unknown option \"" << argv[curind] << "\"\n";
+            return false;
+
         default:
-            break;
+            cerr << "\n*** Unknown option \"" << argv[curind] << "\"\n";
+            return false;
         }
     } 
 
@@ -68,6 +83,6 @@ cerr << "acceptArgs1 "    << cmdLine << endl;
         else if (!isspace(c))
             *oPtr++ = c;
     }
-cerr << "acceptArgs2 "    << argc << " " << argv[0] << " " << argv[1] << " " << argv[2] << endl;
+cerr << "acceptArgs2 "    << argc << " " << argv[0] << endl;
     return acceptArgs(argc, argv);
 }

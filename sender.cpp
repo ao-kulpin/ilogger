@@ -5,7 +5,7 @@
 
 using namespace std;
 
-static bool ParseLine(const string line, INPUT& msg);
+static bool ParseLine(const string line, MKInput& mki);
 
 class CoordConvertor {
 private:
@@ -43,11 +43,15 @@ DWORD WINAPI SenderThreadFunc(LPVOID param) {
 
     string line;
     while(getline(cin, line)) {
-        INPUT msg;
-        if (ParseLine(line, msg)) {
-            if (SendInput(1, &msg, sizeof msg) != 1) {
+        MKInput mki;
+        if (ParseLine(line, mki)) {
+#ifdef __WINDOWS__            
+            INPUT wi;
+            mki.toWin(wi);
+            if (SendInput(1, &wi, sizeof wi) != 1) {
                 cerr << "\n*** Can't send message\"" << line << "\" system error: " << GetLastError() << endl << endl;
             }
+#endif // __WINDOWS__            
         } else 
             cerr << "\n*** invalid input message \"" << line << "\"\n";
         // Sleep(100);
@@ -61,80 +65,70 @@ DWORD WINAPI SenderThreadFunc(LPVOID param) {
 static const double xFactor = 65535.0 / (GetSystemMetrics(SM_CXSCREEN) - 1);
 static const double yFactor = 65535.0 / (GetSystemMetrics(SM_CYSCREEN) - 1);
 
-static bool ParseLine(const string line, INPUT& msg) {
-    memset(&msg, 0, sizeof msg);
-    auto& mi = msg.mi;
-    auto& ki = msg.ki;
-
+static bool ParseLine(const string line, MKInput& mki) {
     const char* linePtr = line.c_str();
 
-    char mousePressStr  [] = "Mouse button press: ";
-    char mouseReleaseStr[] = "Mouse button release: ";
-    char mouseWheelStr  [] = "Mouse wheel: ";
-    char mouseMoveStr   [] = "Mouse move: ";
-    char keyPressStr    [] = "Key press: ";
-    char keyReleaseStr  [] = "Key release: ";
+    static const char mousePressStr  [] = "Mouse button press: ";
+    static const char mouseReleaseStr[] = "Mouse button release: ";
+    static const char mouseWheelStr  [] = "Mouse wheel: ";
+    static const char mouseMoveStr   [] = "Mouse move: ";
+    static const char keyPressStr    [] = "Key press: ";
+    static const char keyReleaseStr  [] = "Key release: ";
 
     if (auto mousePressPtr = strstr(linePtr, mousePressStr)) {
-        msg.type = INPUT_MOUSE;
         mousePressPtr += sizeof (mousePressStr) - 1;
         if (strstr(mousePressPtr, "LEFT")) {
-            mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+            mki = MKInput(MInput(MInput::Action::press, MInput::Button::left));
             return true;
         } else if (strstr(mousePressPtr, "RIGHT")) {
-            mi.dwFlags = MOUSEEVENTF_RIGHTDOWN;
+            mki = MKInput(MInput(MInput::Action::press, MInput::Button::right));
             return true;
         } else if (strstr(mousePressPtr, "MIDDLE")) {
-            mi.dwFlags = MOUSEEVENTF_MIDDLEDOWN;
+            mki = MKInput(MInput(MInput::Action::press, MInput::Button::middle));
             return true;
         } else
             return false;
     }
     else if (auto mouseReleasePtr = strstr(linePtr, mouseReleaseStr)) {
-        msg.type = INPUT_MOUSE;
         mouseReleasePtr += sizeof (mouseReleaseStr) - 1;
         if (strstr(mouseReleasePtr, "LEFT")) {
-            mi.dwFlags = MOUSEEVENTF_LEFTUP;
+            mki = MKInput(MInput(MInput::Action::release, MInput::Button::left));
             return true;
         } else if (strstr(mouseReleasePtr, "RIGHT")) {
-            mi.dwFlags = MOUSEEVENTF_RIGHTUP;
+            mki = MKInput(MInput(MInput::Action::release, MInput::Button::right));
             return true;
         } else if (strstr(mouseReleasePtr, "MIDDLE")) {
-            mi.dwFlags = MOUSEEVENTF_MIDDLEUP;
+            mki = MKInput(MInput(MInput::Action::release, MInput::Button::middle));
             return true;
         } else
             return false;
     } else if (auto mouseWheelPtr = strstr(linePtr, mouseWheelStr)) {
-        msg.type = INPUT_MOUSE;
-        mi.dwFlags = MOUSEEVENTF_WHEEL;
         mouseWheelPtr += sizeof (mouseWheelStr) - 1;
         if (strstr(mouseWheelPtr, "UP")) {
-            mi.mouseData = WHEEL_DELTA;
+            mki = MKInput(MInput(MInput::Action::wheel, MInput::Button::none, true));
             return true;
         } else if (strstr(mouseWheelPtr, "DOWN")) {
-            mi.mouseData = -WHEEL_DELTA;
+            mki = MKInput(MInput(MInput::Action::wheel, MInput::Button::none, false));
             return true;
         } else
             return false;
     } else if (auto mouseMovePtr = strstr(linePtr, mouseMoveStr)) {
-        msg.type = INPUT_MOUSE;
-        mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK;
-
         mouseMovePtr += sizeof (mouseMoveStr) - 1;
         if (auto xPtr = strstr(mouseMovePtr, "X=")) {
             xPtr += 2; // length of "X="
             char* endPtr = 0;
-            mi.dx = convertor.toAbsoluteX(strtol(xPtr, &endPtr, 10));
+            auto dx = convertor.toAbsoluteX(strtol(xPtr, &endPtr, 10));
             if (xPtr == endPtr)
                 // no number found
                 return false;
             if (auto yPtr = strstr(endPtr, "Y=")) {
                 yPtr += 2; // length of "Y="
                 endPtr = 0;
-                mi.dy = convertor.toAbsoluteY(strtol(yPtr, &endPtr, 10));
+                auto dy = convertor.toAbsoluteY(strtol(yPtr, &endPtr, 10));
                 if (yPtr == endPtr)
                     // no number found
                     return false;
+                mki = MKInput(MInput(MInput::Action::move, MInput::Button::none, false, dx, dy));
                 return true;                    
             } else
                 return false;
@@ -143,23 +137,22 @@ static bool ParseLine(const string line, INPUT& msg) {
                 return false;             
 
     } else if (auto keyPressPtr = strstr(linePtr, keyPressStr)) {
-        msg.type = INPUT_KEYBOARD;
         keyPressPtr += sizeof(keyPressStr) - 1;
         char* endPtr = 0;
-        ki.wVk = strtol(keyPressPtr, &endPtr, 10);
+        auto vk = strtol(keyPressPtr, &endPtr, 10);
         if (keyPressPtr == endPtr) 
             // no number found
             return false;
+        mki = MKInput(KInput(KInput::Action::press, vk));
         return true;            
     } else if (auto keyReleasePtr = strstr(linePtr, keyReleaseStr)) {
-        msg.type = INPUT_KEYBOARD;
-        ki.dwFlags = KEYEVENTF_KEYUP;
         keyReleasePtr += sizeof(keyReleaseStr) - 1;
         char* endPtr = 0;
-        ki.wVk = strtol(keyReleasePtr, &endPtr, 10);
+        auto vk = strtol(keyReleasePtr, &endPtr, 10);
         if (keyReleasePtr == endPtr) 
             // no number found
             return false;
+        mki = MKInput(KInput(KInput::Action::release, vk));
         return true;            
     } else
         // unknown message

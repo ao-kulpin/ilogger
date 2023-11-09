@@ -24,6 +24,10 @@ public:
     MInput(Action action, Button button, bool wheelUp = false, long dx = 0, long dy = 0) 
             : _action(action), _button(button), _dx(dx), _dy(dy), _wheelUp(wheelUp) {}
 
+    MInput() {     // default/cleaning constructor
+        memset(this, 0, sizeof *this);
+    }
+
 #ifdef __WINDOWS__
     void toWin(MOUSEINPUT& wmi) {
         memset(&wmi, 0, sizeof wmi);
@@ -59,7 +63,7 @@ public:
                         break;
                         
                     case Button::right:
-                        wmi.dwFlags = MOUSEEVENTF_RIGHTDOWN;
+                        wmi.dwFlags = MOUSEEVENTF_RIGHTUP;
                         break;
 
                     default:
@@ -92,7 +96,11 @@ public:
     enum class  Action {press, release};
     Action     _action;
     unsigned    _vk;       // virtual-key code
-    KInput(Action action, unsigned vk) : _action(action), _vk(vk) {} 
+    KInput(Action action, unsigned vk) : _action(action), _vk(vk) {}
+
+    KInput() {     // default/cleaning constructor
+        memset(this, 0, sizeof *this);
+    }
 
 #ifdef __WINDOWS__
     void toWin(KEYBDINPUT& wki) {
@@ -119,20 +127,28 @@ class MKInput               // mouse/keyboard input
 public:
     enum class Type {mouse, keyboard};
     Type    _type;
-    union 
+    union MKData
     {
+        MKData() {
+            memset(this, 0, sizeof *this);
+        }
+        
         MInput _mi;
         KInput _ki;
-    };
+    } mk;
     
+    MKInput() {     // default/cleaning constructor
+        memset(this, 0, sizeof *this);
+    }
+
     MKInput(const MInput& mi) {
         _type = Type::mouse;
-        _mi = mi;
+        mk._mi = mi;
     }
 
     MKInput(const KInput& ki) {
         _type = Type::keyboard;
-        _ki = ki;
+        mk._ki = ki;
     }
 #ifdef __WINDOWS__
     void toWin(INPUT& wi) {
@@ -140,12 +156,12 @@ public:
         switch(_type) {
             case Type::mouse:
                 wi.type = INPUT_MOUSE;
-                _mi.toWin(wi.mi);
+                mk._mi.toWin(wi.mi);
                 break;
 
             case Type::keyboard:
                 wi.type = INPUT_KEYBOARD;
-                _ki.toWin(wi.ki);
+                mk._ki.toWin(wi.ki);
                 break;
 
             default:

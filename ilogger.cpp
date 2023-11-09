@@ -6,8 +6,45 @@
 
 Option option;
 
+class OutSkipper {
+private:
+    long long   _nextRunTime = 0;          // time when skipped inerval ends
+    long        _skipInterval = 0;         // in 100-nanosecond units;     
+public:
+    void    start() {
+        _skipInterval = option.skip() * 10000; // miliiseconds -> 100-nanosecond units
+    }
+    
+    bool    isSkipped() {
+        if (_skipInterval == 0)
+            return false;
+
+        SYSTEMTIME st;
+        GetSystemTime(&st);
+
+        FILETIME ft;
+        SystemTimeToFileTime(&st, &ft);
+
+        ULARGE_INTEGER uli;
+        uli.u.LowPart = ft.dwLowDateTime;
+        uli.u.HighPart = ft.dwHighDateTime;
+
+        unsigned long long now = uli.QuadPart;
+
+        if (now < _nextRunTime) 
+            // skipping period
+            return true;
+        else {
+            _nextRunTime = now + _skipInterval;
+            return false;
+        }
+    }
+};
+
+static OutSkipper outSkipper;
+
 LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
-    if (nCode >= 0) {
+    if (nCode >= 0 && !outSkipper.isSkipped()) {
         if (wParam == WM_KEYDOWN) {
             KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
             DWORD keyCode = kbdStruct->vkCode;
@@ -26,7 +63,7 @@ static int wheelDelta = 0;
 
 LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
 
-    if (nCode >= 0) {
+    if (nCode >= 0  && !outSkipper.isSkipped()) {
         if (wParam == WM_LBUTTONDOWN || wParam == WM_RBUTTONDOWN || wParam == WM_MBUTTONDOWN) {
             switch (wParam) {
             case WM_LBUTTONDOWN:
@@ -80,6 +117,9 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 std::cerr << "--skip " << option.skip() << std::endl;
 std::cerr << "--ioformat " << int(option.ioformat()) << std::endl;
 std::cerr << "--ownaction " << int(option.ownAction()) << std::endl;
+
+    outSkipper.start();
+
     HHOOK keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, GetModuleHandle(NULL), 0);
     HHOOK mouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseProc, GetModuleHandle(NULL), 0);
 

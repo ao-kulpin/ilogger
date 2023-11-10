@@ -11,10 +11,10 @@
 
 class MInput {          // mouse input
 public:
-    enum class  Action {press, release, wheel, move};
+    enum class  Action: unsigned char {press, release, wheel, move};
     Action      _action;
 
-    enum class  Button {none, left, middle, right};
+    enum class  Button: unsigned char {none, left, middle, right};
     Button      _button = Button::none;
 
     long        _dx = 0;    // position
@@ -93,9 +93,9 @@ public:
 
 class KInput {              // keybord input
 public:
-    enum class  Action {press, release};
+    enum class  Action: unsigned char {press, release};
     Action     _action;
-    unsigned    _vk;       // virtual-key code
+    unsigned short _vk;     // virtual-key code
     KInput(Action action, unsigned vk) : _action(action), _vk(vk) {}
 
     KInput() {     // default/cleaning constructor
@@ -125,7 +125,7 @@ public:
 class MKInput               // mouse/keyboard input
 {
 public:
-    enum class Type {mouse, keyboard};
+    enum class Type: unsigned char {mouse, keyboard};
     Type    _type;
     union MKData
     {

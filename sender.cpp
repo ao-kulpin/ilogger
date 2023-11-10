@@ -58,6 +58,7 @@ DWORD WINAPI SenderThreadFunc(LPVOID param) {
     }
 
     cerr << "\n*** Sender ended\n";
+    return 0;
 }
 
 #define MOUSEEVENTF_VIRTUALDESK 0x4000

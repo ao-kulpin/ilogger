@@ -1,8 +1,13 @@
 ﻿#include <iostream>
 #include <Windows.h>
+#include <fcntl.h>
+#include <assert.h>
 
 #include "sender.hpp"
 #include "option.hpp"
+#include "mkinput.hpp"
+
+using namespace std;
 
 Option option;
 
@@ -14,7 +19,7 @@ public:
     void    start() {
         _skipInterval = option.skip() * 10000; // miliiseconds -> 100-nanosecond units
     }
-    
+
     bool    isSkipped() {
         if (_skipInterval == 0)
             return false;
@@ -43,17 +48,116 @@ public:
 
 static OutSkipper outSkipper;
 
+class OutWriter {
+private:    
+    bool    _bin    = false;
+public:
+    bool isBinary()     { return _bin; }    
+    void start() {
+        _bin = (option.ioformat() == Option::IOFormat::binary);
+        if (_bin) {
+            // reopen cout in binary mode
+            _setmode(_fileno(stdout), _O_BINARY);
+        }
+    }
+
+    template <class T>
+    inline OutWriter& write(T& data, unsigned len) {
+        // binary output
+        assert(_bin);
+        cout.write((const char*) &data, len);
+        return *this;
+    }
+
+    template <class T>
+    inline OutWriter& write(T& data) {
+        // binary output
+        return write(data, sizeof data);
+    }
+
+    void binSignature() {
+        assert(_bin);
+        write("ilog", 4);
+    }
+
+    void binKey() {
+        binSignature();
+        static const auto k = MKInput::Type::keyboard; 
+        write(k);
+    }
+
+    void binKeyPress(unsigned short vk) {
+        binKey();
+        static const auto act = KInput::Action::press;
+        write(act);
+        write(vk);
+     ////   cerr << "Key press: " << vk << endl;
+    }
+    
+    void binKeyRelease(unsigned short vk) {
+        binKey();
+        static const auto act = KInput::Action::release;
+        write(act);
+        write(vk);
+    //// cerr << "Key release: " << vk << endl;
+    }
+
+    void binMouse() {
+        binSignature();
+        static const auto m = MKInput::Type::mouse; 
+        write(m);
+    }
+
+    void binMousePress(const MInput::Button& button) {
+        binMouse();
+        static const auto p = MInput::Action::press;
+        write(p);
+        write(button);
+    }
+
+    void binMouseRelease(const MInput::Button& button) {
+        binMouse();
+        static const auto r = MInput::Action::release;
+        write(r);
+        write(button);
+    }
+
+    void binMouseWheel(bool wheelUp) {
+        binMouse();
+        static const auto w = MInput::Action::wheel;
+        write(w);
+        unsigned char u = wheelUp ? 1: 0;
+        write(u);
+    }
+
+    void binMouseMove(int dx, int dy) {
+        binMouse();
+        static const auto m = MInput::Action::move;
+        write(m);
+        write(dx);
+        write(dy);
+    }
+};
+
+static OutWriter ow;
+
 LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode >= 0 && !outSkipper.isSkipped()) {
         if (wParam == WM_KEYDOWN) {
             KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
             DWORD keyCode = kbdStruct->vkCode;
-            std::cout << "Key press: " << keyCode << std::endl;
+            if (ow.isBinary())
+               ow.binKeyPress(keyCode);
+            else
+               cout << "Key press: " << keyCode << endl;
         }
         else if (wParam == WM_KEYUP) {
             KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
             DWORD keyCode = kbdStruct->vkCode;
-            std::cout << "Key release: " << keyCode << std::endl;
+            if (ow.isBinary())
+               ow.binKeyRelease(keyCode);
+            else
+               cout << "Key release: " << keyCode << endl;
         }
     }
     return CallNextHookEx(NULL, nCode, wParam, lParam);
@@ -67,42 +171,70 @@ LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
         if (wParam == WM_LBUTTONDOWN || wParam == WM_RBUTTONDOWN || wParam == WM_MBUTTONDOWN) {
             switch (wParam) {
             case WM_LBUTTONDOWN:
-                std::cout << "Mouse button press: LEFT" << std::endl;
+                if (ow.isBinary())
+                    ow.binMousePress(MInput::Button::left);
+                else
+                    cout << "Mouse button press: LEFT" << endl;
                 break;
+
             case WM_RBUTTONDOWN:
-                std::cout << "Mouse button press: RIGHT" << std::endl;
+                if (ow.isBinary())
+                    ow.binMousePress(MInput::Button::right);
+                else
+                    cout << "Mouse button press: RIGHT" << endl;
                 break;
+
             case WM_MBUTTONDOWN:
-                std::cout << "Mouse button press: MIDDLE" << std::endl;
+                if (ow.isBinary())
+                    ow.binMousePress(MInput::Button::middle);
+                else
+                    cout << "Mouse button press: MIDDLE" << endl;
                 break;
+
             }
         }
         else if (wParam == WM_LBUTTONUP || wParam == WM_RBUTTONUP || wParam == WM_MBUTTONUP) {
             switch (wParam) {
             case WM_LBUTTONUP:
-                std::cout << "Mouse button release: LEFT" << std::endl;
+                if (ow.isBinary())
+                    ow.binMouseRelease(MInput::Button::left);
+                else
+                    cout << "Mouse button release: LEFT" << endl;
                 break;
+
             case WM_RBUTTONUP:
-                std::cout << "Mouse button release: RIGHT" << std::endl;
+                if (ow.isBinary())
+                    ow.binMouseRelease(MInput::Button::right);
+                else
+                    cout << "Mouse button release: RIGHT" << endl;
                 break;
+
             case WM_MBUTTONUP:
-                std::cout << "Mouse button release: MIDDLE" << std::endl;
+                if (ow.isBinary())
+                    ow.binMouseRelease(MInput::Button::middle);
+                else
+                    cout << "Mouse button release: MIDDLE" << endl;
                 break;
             }
         }
         else if (wParam == WM_MOUSEWHEEL) {
             MSLLHOOKSTRUCT* pMhs = (MSLLHOOKSTRUCT*)lParam;
             short zDelta = HIWORD(pMhs->mouseData);
-            if(zDelta>0)
-                std::cout << "Mouse wheel: UP" << std::endl;
-            if(zDelta<0)
-                std::cout << "Mouse wheel: DOWN" << std::endl;
+            if (ow.isBinary())
+                ow.binMouseWheel(zDelta > 0);
+            else if(zDelta>0)
+                cout << "Mouse wheel: UP" << endl;
+            else if(zDelta<0)
+                cout << "Mouse wheel: DOWN" << endl;
         }
         else if (wParam == WM_MOUSEMOVE) {
             MSLLHOOKSTRUCT* mouseInfo = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
             int x = mouseInfo->pt.x;
             int y = mouseInfo->pt.y;
-            std::cout << "Mouse move: X=" << x << ", Y=" << y << std::endl;
+            if (ow.isBinary())
+                ow.binMouseMove(x, y);
+            else
+                cout << "Mouse move: X=" << x << ", Y=" << y << endl;
         }
     }
     return CallNextHookEx(NULL, nCode, wParam, lParam);
@@ -111,13 +243,14 @@ LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
 int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, 
     LPSTR lpszCmdLine, int nCmdShow) {
     if (!option.acceptArgs(lpszCmdLine)) {
-        std::cerr << "\n*** Invalid arguments: \"" << lpszCmdLine << "\"\n";
+        cerr << "\n*** Invalid arguments: \"" << lpszCmdLine << "\"\n";
         return 1;
     }
-std::cerr << "--skip " << option.skip() << std::endl;
-std::cerr << "--ioformat " << int(option.ioformat()) << std::endl;
-std::cerr << "--ownaction " << int(option.ownAction()) << std::endl;
+cerr << "--skip " << option.skip() << endl;
+cerr << "--ioformat " << int(option.ioformat()) << endl;
+cerr << "--ownaction " << int(option.ownAction()) << endl;
 
+    ow.start();
     outSkipper.start();
 
     HHOOK keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, GetModuleHandle(NULL), 0);

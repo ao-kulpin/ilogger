@@ -205,11 +205,6 @@ DWORD WINAPI SenderThreadFunc(LPVOID param) {
     return 0;
 }
 
-#define MOUSEEVENTF_VIRTUALDESK 0x4000
-
-static const double xFactor = 65535.0 / (GetSystemMetrics(SM_CXSCREEN) - 1);
-static const double yFactor = 65535.0 / (GetSystemMetrics(SM_CYSCREEN) - 1);
-
 static bool ParseLine(const string line, MKInput& mki) {
     const char* linePtr = line.c_str();
 

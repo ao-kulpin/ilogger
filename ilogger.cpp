@@ -48,7 +48,7 @@ public:
 
 static OutSkipper outSkipper;
 
-class OutWriter {
+class OutWriter {   // binary output to stdout
 private:    
     bool    _bin    = false;
 public:

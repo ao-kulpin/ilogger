@@ -1,13 +1,15 @@
 #include <iostream>
+#include <fcntl.h>
 
 #include "sender.hpp"
 #include "mkinput.hpp"
+#include "option.hpp"
 
 using namespace std;
 
 static bool ParseLine(const string line, MKInput& mki);
 
-class CoordConvertor {
+class CoordConvertor {  
 private:
     LONG _xVirtScr  = GetSystemMetrics(SM_XVIRTUALSCREEN);
     LONG _yVirtScr  = GetSystemMetrics(SM_YVIRTUALSCREEN);
@@ -39,25 +41,167 @@ public:
 
 static CoordConvertor convertor;
 
-DWORD WINAPI SenderThreadFunc(LPVOID param) {
+class InputReader {  // binary input from the stdin
+private:    
+    bool    _bin        = false;
+    bool    _eof        = false;
+    bool    _invalid    = false;
+public:
+    bool isBinary()     { return _bin; }    
+    bool eof()          { return _eof; }
+    bool invalid()      { return _invalid; }
+    void start() {
+        _bin = (option.ioformat() == Option::IOFormat::binary);
+        if (_bin) {
+            // reopen cin in binary mode
+            _setmode(_fileno(stdin), _O_BINARY);
+        }
+    }
 
-    string line;
-    while(getline(cin, line)) {
+    template <class T>
+    inline InputReader& read(T& data, unsigned len) {
+        // binary input
+        assert(_bin);
+        cin.read((char*) &data, len);
+        return *this;
+    }
+
+    template <class T>
+    inline InputReader& read(T& data) {
+        return read(data, sizeof data);
+    }
+
+    bool binSignature() {
+        char buf[5] = {0};
+        read(buf, 4);
+        _invalid = strcmp(buf, "ilog") != 0;
+        _eof = cin.eof();
+        if (_invalid)
+            cerr << "\n*** Ivalid binary signature\n";
+        return !_invalid;
+    }
+
+    bool binMKInput(MKInput& mki) {
+        if (!binSignature() || _eof) {
+            return false;
+        }
+
+        read(mki._type);
+        switch (mki._type) {
+            case MKInput::Type::mouse:
+                _invalid = !binMInput(mki.mk._mi);
+                break;
+
+            case MKInput::Type::keyboard:
+                _invalid = !binKInput(mki.mk._ki);
+                break;
+
+            default:
+                cerr << "\n*** Ivalid MKInput::Type " << int(mki._type) << endl;
+                _invalid = true;
+                break;
+        }
+        return !_invalid;
+    }
+
+    bool binMInput(MInput& mi) {
+        read(mi._action);
+        switch(mi._action) {
+            case MInput::Action::press:
+            case MInput::Action::release:
+                read(mi._button);
+
+                switch(mi._button) {
+                    case MInput::Button::left:
+                    case MInput::Button::middle:
+                    case MInput::Button::right:
+                        return true;
+                    default:    
+                        cerr << "\n*** Ivalid MInput::Button " << int(mi._button) << endl;
+                        return false;
+                }
+
+            case MInput::Action::wheel:
+                unsigned char u;
+                read(u);
+                mi._wheelUp = (u == 1);
+                if (u > 1) {
+                    cerr << "\n*** Ivalid MInput::wheelUp " << int(u) << endl;
+                    return false;
+                } else
+                    return true;
+
+            case MInput::Action::move:
+                long dx;
+                long dy;
+                read(dx);
+                read(dy);
+                mi._dx = convertor.toAbsoluteX(dx);
+                mi._dy = convertor.toAbsoluteY(dy);
+                return true;
+
+            default:
+                cerr << "\n*** Ivalid MInput::Action " << int(mi._action) << endl;
+                return false;
+        }
+    }
+
+    bool binKInput(KInput& ki) {
+        read(ki._action);
+        switch (ki._action) {
+            case KInput::Action::press:
+            case KInput::Action::release:
+                break;
+
+            default:
+                cerr << "\n*** Ivalid KInput::Action " << int(ki._action) << endl;
+                return false;
+        }
+        read(ki._vk);
+        return true;
+    }
+};
+
+static InputReader ir;
+
+DWORD WINAPI SenderThreadFunc(LPVOID param) {
+    ir.start();
+    while(true) {
+        bool valid = false;
         MKInput mki;
-        if (ParseLine(line, mki)) {
+        if (ir.isBinary()) {
+            // binary stdin
+            valid = ir.binMKInput(mki);
+            if (ir.eof() || !valid) {
+                // end of the stdin or invalid input
+                cerr << "End of loop " << valid << " " << ir.eof();
+                break;
+            }
+
+        } else {
+            // textual stdin
+            string line;
+            getline(cin, line);
+            if (cin.eof())
+                // end of the stdin
+                break;
+
+            valid = !cin.fail() && ParseLine(line, mki);
+            if (!valid)
+               cerr << "\n*** invalid input message \"" << line << "\"\n";
+        }
+        if (valid) {
 #ifdef __WINDOWS__            
             INPUT wi;
             mki.toWin(wi);
             if (SendInput(1, &wi, sizeof wi) != 1) {
-                cerr << "\n*** Can't send message\"" << line << "\" system error: " << GetLastError() << endl << endl;
+                cerr << "\n*** Can't send message\n";
             }
 #endif // __WINDOWS__            
-        } else 
-            cerr << "\n*** invalid input message \"" << line << "\"\n";
-        // Sleep(100);
+        } 
     }
 
-    cerr << "\n*** Sender ended\n";
+    cerr << "\n*** Sender's thread ended\n";
     return 0;
 }
 

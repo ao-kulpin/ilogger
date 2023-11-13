@@ -76,7 +76,7 @@ public:
         read(buf, 4);
         _invalid = strcmp(buf, "ilog") != 0;
         _eof = cin.eof();
-        if (_invalid)
+        if (_invalid && !_eof)
             cerr << "\n*** Ivalid binary signature\n";
         return !_invalid;
     }

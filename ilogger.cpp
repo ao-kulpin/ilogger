@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <thread>
 
 #include "sender.hpp"
 #include "option.hpp"
@@ -256,14 +257,7 @@ cerr << "--ownaction " << int(option.ownAction()) << endl;
     HHOOK keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, GetModuleHandle(NULL), 0);
     HHOOK mouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseProc, GetModuleHandle(NULL), 0);
 
-    DWORD senderId;
-    auto senderHandle = CreateThread( 
-            NULL,                   // default security attributes
-            0,                      // use default stack size  
-            SenderThreadFunc,       // thread function name
-            0,                      // argument to thread function 
-            0,                      // use default creation flags 
-            &senderId);             // returns the thread identifier 
+    thread senderThread(SenderThreadFunc);
 
     MSG msg;
     while (GetMessage(&msg, NULL, 0, 0)) {

@@ -164,7 +164,7 @@ public:
 
 static InputReader ir;
 
-DWORD WINAPI SenderThreadFunc(LPVOID param) {
+void SenderThreadFunc() {
     ir.start();
     while(true) {
         bool valid = false;
@@ -174,7 +174,6 @@ DWORD WINAPI SenderThreadFunc(LPVOID param) {
             valid = ir.binMKInput(mki);
             if (ir.eof() || !valid) {
                 // end of the stdin or invalid input
-                cerr << "End of loop " << valid << " " << ir.eof();
                 break;
             }
 
@@ -202,7 +201,6 @@ DWORD WINAPI SenderThreadFunc(LPVOID param) {
     }
 
     cerr << "\n*** Sender's thread ended\n";
-    return 0;
 }
 
 static bool ParseLine(const string line, MKInput& mki) {

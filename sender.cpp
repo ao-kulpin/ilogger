@@ -4,8 +4,12 @@
 #include "sender.hpp"
 #include "mkinput.hpp"
 #include "option.hpp"
+#include "astore.hpp"
+#include "mtrack.hpp"
 
 using namespace std;
+
+static MouseTracker mtrack; // mouse position store to the Action Store
 
 static bool ParseLine(const string line, MKInput& mki);
 
@@ -16,26 +20,36 @@ private:
     LONG _cxVirtScr = GetSystemMetrics(SM_CXVIRTUALSCREEN);
     LONG _cyVirtScr = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 public:
-    CoordConvertor() {}
-    
-    LONG toAbsoluteX(LONG x) {
+    inline
+    LONG roundX(LONG x) {
         if (x < _xVirtScr)
             x = _xVirtScr;
 
         if (x >= _cxVirtScr)
             x = _cxVirtScr - 1;
 
-        return MulDiv(65535, x - _xVirtScr, _cxVirtScr - 1);            
+        return x;    
     }
 
-    LONG toAbsoluteY(LONG y) {
+    inline
+    LONG toAbsoluteX(LONG x) {
+        return MulDiv(65535, roundX(x) - _xVirtScr, _cxVirtScr - 1);            
+    }
+
+    inline
+    LONG roundY(LONG y) {
         if (y < _yVirtScr)
             y = _yVirtScr;
 
         if (y >= _cyVirtScr)
             y = _cyVirtScr - 1;
 
-        return MulDiv(65535, y - _yVirtScr, _cyVirtScr - 1);            
+        return y;            
+    }
+
+    inline
+    LONG toAbsoluteY(LONG y) {
+        return MulDiv(65535, roundY(y) - _yVirtScr, _cyVirtScr - 1);            
     }
 };
 
@@ -131,14 +145,18 @@ public:
                 } else
                     return true;
 
-            case MInput::Action::move:
-                long dx;
-                long dy;
+            case MInput::Action::move: {
+                int dx;
+                int dy;
                 read(dx);
                 read(dy);
-                mi._dx = convertor.toAbsoluteX(dx);
-                mi._dy = convertor.toAbsoluteY(dy);
+                int rx = convertor.roundX(dx);
+                int ry = convertor.roundX(dy);
+                mtrack.set(rx, ry);
+                mi._dx = convertor.toAbsoluteX(rx);
+                mi._dy = convertor.toAbsoluteY(ry);
                 return true;
+            }
 
             default:
                 cerr << "\n*** Ivalid MInput::Action " << int(mi._action) << endl;
@@ -190,6 +208,7 @@ void SenderThreadFunc() {
                cerr << "\n*** invalid input message \"" << line << "\"\n";
         }
         if (valid) {
+            actionStore.put(mki, mtrack.getX(), mtrack.getY());
 #ifdef __WINDOWS__            
             INPUT wi;
             mki.toWin(wi);
@@ -255,18 +274,20 @@ static bool ParseLine(const string line, MKInput& mki) {
         if (auto xPtr = strstr(mouseMovePtr, "X=")) {
             xPtr += 2; // length of "X="
             char* endPtr = 0;
-            auto dx = convertor.toAbsoluteX(strtol(xPtr, &endPtr, 10));
+            auto rx = convertor.roundX(strtol(xPtr, &endPtr, 10));
             if (xPtr == endPtr)
                 // no number found
                 return false;
             if (auto yPtr = strstr(endPtr, "Y=")) {
                 yPtr += 2; // length of "Y="
                 endPtr = 0;
-                auto dy = convertor.toAbsoluteY(strtol(yPtr, &endPtr, 10));
+                auto ry = convertor.roundY(strtol(yPtr, &endPtr, 10));
                 if (yPtr == endPtr)
                     // no number found
                     return false;
-                mki = MKInput(MInput(MInput::Action::move, MInput::Button::none, false, dx, dy));
+                mtrack.set(rx, ry);
+                mki = MKInput(MInput(MInput::Action::move, MInput::Button::none, false, 
+                              convertor.toAbsoluteX(rx), convertor.toAbsoluteY(ry)));
                 return true;                    
             } else
                 return false;

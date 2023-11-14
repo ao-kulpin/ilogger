@@ -6,11 +6,21 @@
 
 #include "sender.hpp"
 #include "option.hpp"
+#include "astore.hpp"
 #include "mkinput.hpp"
+#include "mtrack.hpp"
 
 using namespace std;
 
-Option option;
+Option       option;
+ActionStore  actionStore;
+static
+MouseTracker mtrack;
+
+inline static void writePrefix(bool ownAction) { // write "own action prefix" to the cout
+    if(ownAction && option.ownAction() == Option::OwnAction::highlight)
+        cout << "==>";
+}
 
 class OutSkipper {
 private:
@@ -147,18 +157,30 @@ LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
         if (wParam == WM_KEYDOWN) {
             KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
             DWORD keyCode = kbdStruct->vkCode;
-            if (ow.isBinary())
-               ow.binKeyPress(keyCode);
-            else
-               cout << "Key press: " << keyCode << endl;
+            bool ownAction = actionStore.check(MKInput(KInput(KInput::Action::press, keyCode)), mtrack.getX(), mtrack.getY());
+
+            if (!ownAction || option.ownAction() != Option::OwnAction::skip) { // not ignored with --ownaction skip
+                if (ow.isBinary())
+                    ow.binKeyPress(keyCode);
+                else {
+                    writePrefix(ownAction);
+                    cout << "Key press: " << keyCode << endl;
+                }
+            }
         }
         else if (wParam == WM_KEYUP) {
             KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
             DWORD keyCode = kbdStruct->vkCode;
-            if (ow.isBinary())
-               ow.binKeyRelease(keyCode);
-            else
-               cout << "Key release: " << keyCode << endl;
+            bool ownAction = actionStore.check(MKInput(KInput(KInput::Action::release, keyCode)), mtrack.getX(), mtrack.getY());
+
+            if (!ownAction || option.ownAction() != Option::OwnAction::skip) { // not ignored with --ownaction skip
+                if (ow.isBinary())
+                    ow.binKeyRelease(keyCode);
+                else {
+                    writePrefix(ownAction);
+                   cout << "Key release: " << keyCode << endl;
+            }
+            }
         }
     }
     return CallNextHookEx(NULL, nCode, wParam, lParam);

@@ -1,5 +1,5 @@
-#undef __WINDOWS__
-#define __WINDOWS__
+#ifndef __MKINPUT__
+#define __MKINPUT__
 
 #ifdef __WINDOWS__
 #include <windows.h>
@@ -172,3 +172,4 @@ public:
 #endif // __WINDOWS__
 };
 
+#endif // __MKINPUT__

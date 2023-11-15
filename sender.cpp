@@ -100,6 +100,9 @@ public:
             return false;
         }
 
+        unsigned char a;  // action - own/user
+        read(a);
+
         read(mki._type);
         switch (mki._type) {
             case MKInput::Type::mouse:

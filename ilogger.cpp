@@ -59,13 +59,15 @@ public:
 
 static OutSkipper outSkipper;
 
-class OutWriter {   // binary output to stdout
+class OutWriter {   // textual/binary output to stdout
 private:    
-    bool    _bin    = false;
+    bool                _bin = false;
+    Option::OwnAction   _act = Option::OwnAction::normal;
 public:
     bool isBinary()     { return _bin; }    
     void start() {
         _bin = (option.ioformat() == Option::IOFormat::binary);
+        _act = option.ownAction();
         if (_bin) {
             // reopen cout in binary mode
             _setmode(_fileno(stdout), _O_BINARY);
@@ -86,9 +88,153 @@ public:
         return write(data, sizeof data);
     }
 
+    void writeMKI(const MKInput& mki) {
+        const bool ownAct = actionStore.check(mki, mtrack.getX(), mtrack.getY());
+        if (ownAct && _act == Option::OwnAction::skip)
+            // skipped with --ownacton skip
+            return;
+
+        writeActPrefix(ownAct);
+
+        if (_bin)
+            write(mki._type);  // 0 - mouse, 1 - keyboard
+
+        switch(mki._type) {
+            case MKInput::Type::mouse:
+                writeMI(mki.mk._mi);
+                break;
+
+            case MKInput::Type::keyboard:
+                writeKI(mki.mk._ki);
+                break;
+
+            default:
+                assert(false);
+                break;
+        }
+    }
+
+    inline static 
+    const char* buttonStr(MInput::Button b) {
+        switch (b) {
+            case MInput::Button::left:
+                return "LEFT";
+
+            case MInput::Button::middle:
+                return "MIDDLE";
+
+            case MInput::Button::right:
+                return "RIGHT";
+
+            default:
+                return "";
+        }
+    }
+
+    void writeMI(const MInput& mi) {
+        if (_bin) {
+            write(mi._action);
+            switch(mi._action) {
+                case MInput::Action::press:
+                case MInput::Action::release:
+                    write(mi._button);
+                    break;
+
+                case MInput::Action::wheel: {
+                    unsigned char w = mi._wheelUp ? 1: 0;
+                    write(w);
+                }
+                break;
+
+                case MInput::Action::move: 
+                    write (mi._dx);
+                    write (mi._dy);
+                    break;
+
+                default:
+                    assert(false);
+                    break;
+            }
+        } else {
+            switch(mi._action) {
+                case MInput::Action::press:
+                    cout << "Mouse button press: " << buttonStr(mi._button) << endl;
+                    break;
+
+                case MInput::Action::release:
+                    cout << "Mouse button release: " << buttonStr(mi._button) << endl;
+                    break;
+
+                case MInput::Action::wheel:
+                    if (mi._wheelUp) 
+                        cout << "Mouse wheel: UP\n";
+                    else
+                        cout << "Mouse wheel: DOWN\n";
+                    break;
+
+                case MInput::Action::move:
+                    cout << "Mouse move: X=" << mi._dx << ", Y=" << mi._dy << endl;
+                    break;
+
+                default:
+                    assert(false);
+                    cout << "Mouse unknown\n";
+                    break;
+            }                    
+        }
+    }
+
+    void writeKI(const KInput& ki) {
+        if (_bin) {
+            write(ki._action);
+            unsigned short vk = ki._vk;
+            write(vk);
+        } else {
+            switch(ki._action) {
+                case KInput::Action::press:
+                    cout << "Key press: ";
+                    break;
+
+                case KInput::Action::release:
+                    cout << "Key release: ";
+                    break;
+
+                default:
+                    assert(false);
+                    cout << "Key unknown: ";
+                    break;
+            }
+            cout << ki._vk << endl;
+        }
+    }
+
+    void writeActPrefix(bool ownAct) {
+        if (_bin) {
+            // binary prefix
+            write("ilog", 4);
+
+            unsigned char actByte = (ownAct ? 1: 0);
+            write(actByte);
+
+        } else if (ownAct && _act == Option::OwnAction::highlight)
+            // textual prefix
+            cout << "==>";
+    }
+
     void binSignature() {
         assert(_bin);
         write("ilog", 4);
+    }
+
+    void actPrefix() {
+        if (_act != Option::OwnAction::skip) {
+            if (_bin) {
+
+            }
+
+        }
+
+
     }
 
     void binKey() {
@@ -103,6 +249,12 @@ public:
         write(act);
         write(vk);
      ////   cerr << "Key press: " << vk << endl;
+    }
+
+    void keyRelease(unsigned short vk) {
+        if (_act != Option::OwnAction::skip) {
+
+        }
     }
     
     void binKeyRelease(unsigned short vk) {
@@ -157,32 +309,15 @@ LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
         if (wParam == WM_KEYDOWN) {
             KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
             DWORD keyCode = kbdStruct->vkCode;
-            bool ownAction = actionStore.check(MKInput(KInput(KInput::Action::press, keyCode)), mtrack.getX(), mtrack.getY());
-
-            if (!ownAction || option.ownAction() != Option::OwnAction::skip) { // not ignored with --ownaction skip
-                if (ow.isBinary())
-                    ow.binKeyPress(keyCode);
-                else {
-                    writePrefix(ownAction);
-                    cout << "Key press: " << keyCode << endl;
-                }
-            }
+            ow.writeMKI(MKInput(KInput(KInput::Action::press, keyCode)));
         }
         else if (wParam == WM_KEYUP) {
             KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
             DWORD keyCode = kbdStruct->vkCode;
-            bool ownAction = actionStore.check(MKInput(KInput(KInput::Action::release, keyCode)), mtrack.getX(), mtrack.getY());
-
-            if (!ownAction || option.ownAction() != Option::OwnAction::skip) { // not ignored with --ownaction skip
-                if (ow.isBinary())
-                    ow.binKeyRelease(keyCode);
-                else {
-                    writePrefix(ownAction);
-                   cout << "Key release: " << keyCode << endl;
-            }
-            }
+            ow.writeMKI(MKInput(KInput(KInput::Action::release, keyCode)));
         }
     }
+
     return CallNextHookEx(NULL, nCode, wParam, lParam);
 }
 

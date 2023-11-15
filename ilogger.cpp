@@ -308,91 +308,67 @@ LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode >= 0 && !outSkipper.isSkipped()) {
         if (wParam == WM_KEYDOWN) {
             KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
-            DWORD keyCode = kbdStruct->vkCode;
-            ow.writeMKI(MKInput(KInput(KInput::Action::press, keyCode)));
+            ow.writeMKI(MKInput(KInput(KInput::Action::press, kbdStruct->vkCode)));
         }
         else if (wParam == WM_KEYUP) {
             KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
-            DWORD keyCode = kbdStruct->vkCode;
-            ow.writeMKI(MKInput(KInput(KInput::Action::release, keyCode)));
+            ow.writeMKI(MKInput(KInput(KInput::Action::release, kbdStruct->vkCode)));
         }
     }
 
     return CallNextHookEx(NULL, nCode, wParam, lParam);
 }
 
-static int wheelDelta = 0;
-
 LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
 
     if (nCode >= 0  && !outSkipper.isSkipped()) {
         if (wParam == WM_LBUTTONDOWN || wParam == WM_RBUTTONDOWN || wParam == WM_MBUTTONDOWN) {
+            MInput::Button button = MInput::Button::none;
+
             switch (wParam) {
             case WM_LBUTTONDOWN:
-                if (ow.isBinary())
-                    ow.binMousePress(MInput::Button::left);
-                else
-                    cout << "Mouse button press: LEFT" << endl;
+                button = MInput::Button::left;
                 break;
 
             case WM_RBUTTONDOWN:
-                if (ow.isBinary())
-                    ow.binMousePress(MInput::Button::right);
-                else
-                    cout << "Mouse button press: RIGHT" << endl;
+                button = MInput::Button::right;
                 break;
 
             case WM_MBUTTONDOWN:
-                if (ow.isBinary())
-                    ow.binMousePress(MInput::Button::middle);
-                else
-                    cout << "Mouse button press: MIDDLE" << endl;
+                button = MInput::Button::middle;
                 break;
-
             }
+            ow.writeMKI(MKInput(MInput(MInput::Action::press, button)));
         }
         else if (wParam == WM_LBUTTONUP || wParam == WM_RBUTTONUP || wParam == WM_MBUTTONUP) {
+            MInput::Button button = MInput::Button::none;
+
             switch (wParam) {
             case WM_LBUTTONUP:
-                if (ow.isBinary())
-                    ow.binMouseRelease(MInput::Button::left);
-                else
-                    cout << "Mouse button release: LEFT" << endl;
+                button = MInput::Button::left;
                 break;
 
             case WM_RBUTTONUP:
-                if (ow.isBinary())
-                    ow.binMouseRelease(MInput::Button::right);
-                else
-                    cout << "Mouse button release: RIGHT" << endl;
+                button = MInput::Button::right;
                 break;
 
             case WM_MBUTTONUP:
-                if (ow.isBinary())
-                    ow.binMouseRelease(MInput::Button::middle);
-                else
-                    cout << "Mouse button release: MIDDLE" << endl;
+                button = MInput::Button::middle;
                 break;
             }
+            ow.writeMKI(MKInput(MInput(MInput::Action::release, button)));
         }
         else if (wParam == WM_MOUSEWHEEL) {
             MSLLHOOKSTRUCT* pMhs = (MSLLHOOKSTRUCT*)lParam;
             short zDelta = HIWORD(pMhs->mouseData);
-            if (ow.isBinary())
-                ow.binMouseWheel(zDelta > 0);
-            else if(zDelta>0)
-                cout << "Mouse wheel: UP" << endl;
-            else if(zDelta<0)
-                cout << "Mouse wheel: DOWN" << endl;
+            ow.writeMKI(MKInput(MInput(MInput::Action::wheel, MInput::Button::none, zDelta > 0)));
         }
         else if (wParam == WM_MOUSEMOVE) {
             MSLLHOOKSTRUCT* mouseInfo = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
             int x = mouseInfo->pt.x;
             int y = mouseInfo->pt.y;
-            if (ow.isBinary())
-                ow.binMouseMove(x, y);
-            else
-                cout << "Mouse move: X=" << x << ", Y=" << y << endl;
+            mtrack.set(x, y);
+            ow.writeMKI(MKInput(MInput(MInput::Action::move, MInput::Button::none, false, x, y)));
         }
     }
     return CallNextHookEx(NULL, nCode, wParam, lParam);

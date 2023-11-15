@@ -17,11 +17,11 @@ public:
     enum class  Button: unsigned char {none, left, middle, right};
     Button      _button = Button::none;
 
-    long        _dx = 0;    // position
-    long        _dy = 0;    //
+    int         _dx = 0;    // position
+    int         _dy = 0;    //
 
     bool        _wheelUp = false;
-    MInput(Action action, Button button, bool wheelUp = false, long dx = 0, long dy = 0) 
+    MInput(Action action, Button button, bool wheelUp = false, int dx = 0, int dy = 0) 
             : _action(action), _button(button), _dx(dx), _dy(dy), _wheelUp(wheelUp) {}
 
     MInput() {     // default/cleaning constructor

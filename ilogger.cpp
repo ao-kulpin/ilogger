@@ -15,12 +15,7 @@ using namespace std;
 Option       option;
 ActionStore  actionStore;
 static
-MouseTracker mtrack;
-
-inline static void writePrefix(bool ownAction) { // write "own action prefix" to the cout
-    if(ownAction && option.ownAction() == Option::OwnAction::highlight)
-        cout << "==>";
-}
+MouseTracker mtrack;                        // mouse position stored into the Action Store
 
 class OutSkipper {
 private:
@@ -75,7 +70,8 @@ public:
     }
 
     template <class T>
-    inline OutWriter& write(T& data, unsigned len) {
+    inline 
+    OutWriter& write(T& data, unsigned len) {
         // binary output
         assert(_bin);
         cout.write((const char*) &data, len);
@@ -83,7 +79,8 @@ public:
     }
 
     template <class T>
-    inline OutWriter& write(T& data) {
+    inline 
+    OutWriter& write(T& data) {
         // binary output
         return write(data, sizeof data);
     }
@@ -220,86 +217,6 @@ public:
             // textual prefix
             cout << "==>";
     }
-
-    void binSignature() {
-        assert(_bin);
-        write("ilog", 4);
-    }
-
-    void actPrefix() {
-        if (_act != Option::OwnAction::skip) {
-            if (_bin) {
-
-            }
-
-        }
-
-
-    }
-
-    void binKey() {
-        binSignature();
-        static const auto k = MKInput::Type::keyboard; 
-        write(k);
-    }
-
-    void binKeyPress(unsigned short vk) {
-        binKey();
-        static const auto act = KInput::Action::press;
-        write(act);
-        write(vk);
-     ////   cerr << "Key press: " << vk << endl;
-    }
-
-    void keyRelease(unsigned short vk) {
-        if (_act != Option::OwnAction::skip) {
-
-        }
-    }
-    
-    void binKeyRelease(unsigned short vk) {
-        binKey();
-        static const auto act = KInput::Action::release;
-        write(act);
-        write(vk);
-    //// cerr << "Key release: " << vk << endl;
-    }
-
-    void binMouse() {
-        binSignature();
-        static const auto m = MKInput::Type::mouse; 
-        write(m);
-    }
-
-    void binMousePress(const MInput::Button& button) {
-        binMouse();
-        static const auto p = MInput::Action::press;
-        write(p);
-        write(button);
-    }
-
-    void binMouseRelease(const MInput::Button& button) {
-        binMouse();
-        static const auto r = MInput::Action::release;
-        write(r);
-        write(button);
-    }
-
-    void binMouseWheel(bool wheelUp) {
-        binMouse();
-        static const auto w = MInput::Action::wheel;
-        write(w);
-        unsigned char u = wheelUp ? 1: 0;
-        write(u);
-    }
-
-    void binMouseMove(int dx, int dy) {
-        binMouse();
-        static const auto m = MInput::Action::move;
-        write(m);
-        write(dx);
-        write(dy);
-    }
 };
 
 static OutWriter ow;
@@ -374,15 +291,18 @@ LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
     return CallNextHookEx(NULL, nCode, wParam, lParam);
 }
 
+#ifdef __WINDOWS__
 int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, 
     LPSTR lpszCmdLine, int nCmdShow) {
     if (!option.acceptArgs(lpszCmdLine)) {
         cerr << "\n*** Invalid arguments: \"" << lpszCmdLine << "\"\n";
         return 1;
     }
-cerr << "--skip " << option.skip() << endl;
-cerr << "--ioformat " << int(option.ioformat()) << endl;
-cerr << "--ownaction " << int(option.ownAction()) << endl;
+#endif
+
+// cerr << "--skip " << option.skip() << endl;
+// cerr << "--ioformat " << int(option.ioformat()) << endl;
+// cerr << "--ownaction " << int(option.ownAction()) << endl;
 
     ow.start();
     outSkipper.start();

@@ -9,19 +9,19 @@
 
 using namespace std;
 
-static MouseTracker mtrack; // mouse position store to the Action Store
+static MouseTracker mtrack; // mouse position stored into the Action Store
 
 static bool ParseLine(const string line, MKInput& mki);
 
 class CoordConvertor {  
 private:
-    LONG _xVirtScr  = GetSystemMetrics(SM_XVIRTUALSCREEN);
-    LONG _yVirtScr  = GetSystemMetrics(SM_YVIRTUALSCREEN);
-    LONG _cxVirtScr = GetSystemMetrics(SM_CXVIRTUALSCREEN);
-    LONG _cyVirtScr = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+    long _xVirtScr  = GetSystemMetrics(SM_XVIRTUALSCREEN);
+    long _yVirtScr  = GetSystemMetrics(SM_YVIRTUALSCREEN);
+    long _cxVirtScr = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+    long _cyVirtScr = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 public:
     inline
-    LONG roundX(LONG x) {
+    long roundX(long x) {
         if (x < _xVirtScr)
             x = _xVirtScr;
 
@@ -32,12 +32,12 @@ public:
     }
 
     inline
-    LONG toAbsoluteX(LONG x) {
+    long toAbsoluteX(long x) {
         return MulDiv(65535, roundX(x) - _xVirtScr, _cxVirtScr - 1);            
     }
 
     inline
-    LONG roundY(LONG y) {
+    long roundY(long y) {
         if (y < _yVirtScr)
             y = _yVirtScr;
 
@@ -48,7 +48,7 @@ public:
     }
 
     inline
-    LONG toAbsoluteY(LONG y) {
+    long toAbsoluteY(long y) {
         return MulDiv(65535, roundY(y) - _yVirtScr, _cyVirtScr - 1);            
     }
 };

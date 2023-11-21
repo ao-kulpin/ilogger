@@ -8,17 +8,20 @@
 #include <X11/Xlib.h>
 
 void keyboardInput(int fd) {
+////    printf ("keboard start\n");
     struct input_event ev;
     while (true) {
+/// printf ("keboard read start\n");
         if (read(fd, &ev, sizeof(ev)) == -1) {
             perror("Failed to read keyboard input");
             break;
         }
-
+////////printf ("keboard\n");    
         if (ev.type == EV_KEY) {
             std::cout << "Key " << (ev.value ? "press: " : "release: ") << ev.code << std::endl;
         }
     }
+printf ("keboard end\n");         
 }
 
 void mouseInput(int fd) {
@@ -33,8 +36,10 @@ void mouseInput(int fd) {
     int screenWidth = DisplayWidth(display, screen);
     int screenHeight = DisplayHeight(display, screen);
 
-    struct libevdev *dev = nullptr;
+   struct libevdev *dev = nullptr;
+    //struct libevdev *dev =  libevdev_new();
     if (libevdev_new_from_fd(fd, &dev) != 0) {
+    //if (libevdev_set_fd(dev, fd) != 0) {
         std::cerr << "Error libevdev" << std::endl;
         close(fd);
         XCloseDisplay(display);
@@ -46,8 +51,8 @@ void mouseInput(int fd) {
     int maxX = libevdev_get_abs_maximum(dev, ABS_X);
     int maxY = libevdev_get_abs_maximum(dev, ABS_Y);
 
-    // std::cout << screenWidth << " " << screenHeight << std::endl;
-    // std::cout << minX << " " << minY << " " << maxX << " " << maxY << std::endl;
+    std::cout << "screenWidth/Heght: " << screenWidth << " " << screenHeight << std::endl;
+    std::cout << "min/max x/y: " << minX << " " << minY << " " << maxX << " " << maxY << std::endl;
     struct input_event ev;
 
     static int currentX = 0;
@@ -106,6 +111,7 @@ int main(int argc, char** argv) {
     int keyboardFd = open(argv[1], O_RDONLY); // Замените X на номер устройства клавиатуры
     int mouseFd = open(argv[2], O_RDONLY);    // Замените Y на номер устройства мыши
 
+printf("fds: %d %d\n", keyboardFd, mouseFd);
     if (keyboardFd == -1 || mouseFd == -1) {
         perror("Failed to open input devices");
         return 1;

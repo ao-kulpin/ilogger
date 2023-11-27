@@ -315,14 +315,12 @@ LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
     return CallNextHookEx(NULL, nCode, wParam, lParam);
 }
 
-#ifdef __WINDOWS__
 int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, 
     LPSTR lpszCmdLine, int nCmdShow) {
     if (!option.acceptArgs(lpszCmdLine)) {
         cerr << "\n*** Invalid arguments: \"" << lpszCmdLine << "\"\n";
         return 1;
     }
-#endif
 
 // cerr << "--skip " << option.skip() << endl;
 // cerr << "--ioformat " << int(option.ioformat()) << endl;

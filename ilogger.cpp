@@ -16,6 +16,17 @@
 
 #endif // __WINDOWS__
 
+#ifdef __LINUX__
+
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <linux/input.h>
+#include <X11/XKBlib.h>
+#include <X11/extensions/record.h>
+#include <X11/Xlibint.h>
+
+#endif // __LINUX__
+
 using namespace std;
 
 Option       option;
@@ -341,8 +352,117 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 #ifdef __LINUX__
 
-int main() {
+static Display* pDisplay = 0;
+static XRecordRange* pRange = 0;
+static XRecordContext context;
 
+//struct taken from libxnee
+typedef union {
+	unsigned char		type;
+	xEvent				event;
+	xResourceReq		req;
+	xGenericReply		reply;
+	xError				error;
+	xConnSetupPrefix	setup;
+} XRecordDatum;
+
+static bool hookRunning = false;
+
+static
+inline
+MInput::Button getButton(int n) {
+    switch(n) {
+        case 1:
+            return MInput::Button::left;
+
+        case 2:
+            return MInput::Button::middle;
+
+        case 3:
+            return MInput::Button::right;
+
+        default:
+        /////// cerr << "n: " << n << endl;
+            return MInput::Button::none;
+    }
+}
+
+static
+void EventProc (XPointer, XRecordInterceptData *pRecord) {
+    hookRunning = true;
+    if (pRecord->category == XRecordFromServer) {
+        const XRecordDatum& data = *(XRecordDatum *) pRecord->data;
+        switch(data.type) { 
+            case KeyPress:
+                ow.writeMKI(MKInput(KInput(KInput::Action::press, data.event.u.u.detail)));
+                break;
+
+            case KeyRelease:
+                ow.writeMKI(MKInput(KInput(KInput::Action::release, data.event.u.u.detail)));
+                break;
+
+            case ButtonPress:  {
+                auto bn = data.event.u.u.detail;
+                if (bn == 4 || bn == 5)
+                    // Wheel's event
+                    ow.writeMKI(MKInput(MInput(MInput::Action::wheel, MInput::Button::none, bn == 5)));
+                else
+                    // Button press    
+                    ow.writeMKI(MKInput(MInput(MInput::Action::press, getButton(bn))));
+                break;         
+            }          
+
+            case ButtonRelease:  {
+                auto bn = data.event.u.u.detail;
+                if (bn == 4 || bn == 5)
+                    // Wheel's aftershock
+                    break;
+                else
+                    ow.writeMKI(MKInput(MInput(MInput::Action::release, getButton(data.event.u.u.detail))));
+                break;           
+            }        
+        }
+    }
+}
+
+int main(int argc, char* argv[]) {
+    if (!option.acceptArgs(argc, argv)) {
+        cerr << "\n*** Invalid arguments: ";
+        for (int i = 1; i < argc; ++i)
+            cerr << " " << argv[i];
+        cout << endl;
+
+        return 1;
+    }
+
+    ow.start();
+    outSkipper.start();
+
+    thread senderThread(SenderThreadFunc);
+
+    pDisplay = XOpenDisplay(nullptr);
+
+    if (!pDisplay) {
+        cerr << "\n*** Can't open X11 display\n";
+        return 1;
+    }
+
+    XRecordClientSpec clients = XRecordAllClients;
+    pRange = ::XRecordAllocRange();
+    pRange->device_events = {KeyPress, MotionNotify};
+    context = ::XRecordCreateContext(pDisplay, XRecordFromServerTime, &clients, 1, &pRange, 1);
+
+    if (!XRecordEnableContextAsync(pDisplay, context, EventProc, 0)) {
+      cerr << "\n*** XRecordEnableContextAsync failed\n";
+      return 1;
+    }
+
+    while (hookRunning) {
+        XRecordProcessReplies(pDisplay);
+        this_thread::sleep_for(1ms);
+    }
+
+    return 0;
 }
 
 #endif // __LINUX__

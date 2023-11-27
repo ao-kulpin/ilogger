@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cstring>
 #include <fcntl.h>
 
 #include "sender.hpp"
@@ -15,41 +16,55 @@ static bool ParseLine(const string line, MKInput& mki);
 
 class CoordConvertor {  
 private:
+#ifdef __WINDOWS__
     long _xVirtScr  = GetSystemMetrics(SM_XVIRTUALSCREEN);
     long _yVirtScr  = GetSystemMetrics(SM_YVIRTUALSCREEN);
     long _cxVirtScr = GetSystemMetrics(SM_CXVIRTUALSCREEN);
     long _cyVirtScr = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+#endif // __WINDOWS__    
 public:
     inline
     long roundX(long x) {
+#ifdef __WINDOWS__        
         if (x < _xVirtScr)
             x = _xVirtScr;
 
         if (x >= _cxVirtScr)
             x = _cxVirtScr - 1;
+#endif // __WINDOWS__            
 
         return x;    
     }
 
     inline
     long toAbsoluteX(long x) {
-        return MulDiv(65535, roundX(x) - _xVirtScr, _cxVirtScr - 1);            
+#ifdef __WINDOWS__        
+        return MulDiv(65535, roundX(x) - _xVirtScr, _cxVirtScr - 1);  
+#endif // __WINDOWS__
+
+        return x;
     }
 
     inline
     long roundY(long y) {
+#ifdef __WINDOWS__        
         if (y < _yVirtScr)
             y = _yVirtScr;
 
         if (y >= _cyVirtScr)
             y = _cyVirtScr - 1;
+#endif // __WINDOWS__            
 
         return y;            
     }
 
     inline
     long toAbsoluteY(long y) {
+#ifdef __WINDOWS__        
         return MulDiv(65535, roundY(y) - _yVirtScr, _cyVirtScr - 1);            
+#endif // __WINDOWS__        
+
+        return y;
     }
 };
 
@@ -66,10 +81,12 @@ public:
     bool invalid()      { return _invalid; }
     void start() {
         _bin = (option.ioformat() == Option::IOFormat::binary);
+#ifdef __WINDOWS__        
         if (_bin) {
             // reopen cin in binary mode
             _setmode(_fileno(stdin), _O_BINARY);
         }
+#endif // __WINDOWS__        
     }
 
     template <class T>

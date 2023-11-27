@@ -1,5 +1,5 @@
 ﻿#include <iostream>
-#include <Windows.h>
+#include <cstring>
 #include <fcntl.h>
 #include <assert.h>
 #include <thread>
@@ -9,6 +9,12 @@
 #include "astore.hpp"
 #include "mkinput.hpp"
 #include "mtrack.hpp"
+
+#ifdef __WINDOWS__
+
+#include <Windows.h>
+
+#endif // __WINDOWS__
 
 using namespace std;
 
@@ -29,7 +35,7 @@ public:
     bool    isSkipped() {
         if (_skipInterval == 0)
             return false;
-
+#ifdef __WINDOWS__
         SYSTEMTIME st;
         GetSystemTime(&st);
 
@@ -49,6 +55,9 @@ public:
             _nextRunTime = now + _skipInterval;
             return false;
         }
+
+#endif // __WINDOWS__
+        return false;        
     }
 };
 
@@ -63,10 +72,12 @@ public:
     void start() {
         _bin = (option.ioformat() == Option::IOFormat::binary);
         _act = option.ownAction();
+#ifdef __WINDOWS__        
         if (_bin) {
             // reopen cout in binary mode
             _setmode(_fileno(stdout), _O_BINARY);
         }
+#endif // __WINDOWS__        
     }
 
     template <class T>
@@ -221,6 +232,8 @@ public:
 
 static OutWriter ow;
 
+#ifdef __WINDOWS__
+
 LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode >= 0 && !outSkipper.isSkipped()) {
         if (wParam == WM_KEYDOWN) {
@@ -323,3 +336,13 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
     return 0;
 }
+
+#endif // __WINDOWS__
+
+#ifdef __LINUX__
+
+int main() {
+
+}
+
+#endif // __LINUX__

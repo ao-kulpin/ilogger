@@ -416,11 +416,25 @@ void EventProc (XPointer, XRecordInterceptData *pRecord) {
                     // Wheel's aftershock
                     break;
                 else
+                    // Button release
                     ow.writeMKI(MKInput(MInput(MInput::Action::release, getButton(data.event.u.u.detail))));
                 break;           
-            }        
+            }
+
+            case MotionNotify: {
+                const auto& ptr = data.event.u.keyButtonPointer;
+                ow.writeMKI(MKInput(MInput(MInput::Action::move, MInput::Button::none, 
+                                           false, ptr.rootX, ptr.rootY)));
+                break;
+            }
+
+            default:
+                break;
         }
     }
+
+    XRecordFreeData(pRecord);
+    XFlush(pDisplay);
 }
 
 int main(int argc, char* argv[]) {

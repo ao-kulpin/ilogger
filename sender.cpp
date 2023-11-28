@@ -8,6 +8,13 @@
 #include "astore.hpp"
 #include "mtrack.hpp"
 
+#ifdef __LINUX__
+
+#include <X11/extensions/XTest.h>
+#include "displock.hpp"
+
+#endif // __LINUX__
+
 using namespace std;
 
 static MouseTracker mtrack; // mouse position stored into the Action Store
@@ -202,8 +209,48 @@ public:
 
 static InputReader ir;
 
+#ifdef __LINUX__
+
+static Display* pDisplay = 0;
+
+static
+bool sendFakeEvent(const KInput& ki) {
+    return XTestFakeKeyEvent(pDisplay, ki._vk, ki._action == KInput::Action::press, 0);
+}
+
+static
+bool sendFakeEvent(const MInput& mi) {
+    return false;
+}
+
+static
+bool sendFakeEvent(const MKInput& mki) {
+    DisplayLocker dl(pDisplay);
+    bool res = false;
+
+    switch(mki._type) {
+        case MKInput::Type::mouse:
+            res = sendFakeEvent(mki.mk._mi);
+            break;
+
+        case MKInput::Type::keyboard:
+            res = sendFakeEvent(mki.mk._ki);
+            break;
+
+        default:
+            assert(false);
+            break;
+    }
+    XFlush(pDisplay);
+    return res;
+}
+
+#endif // __LINUX__
+
 void SenderThreadFunc() {
     ir.start();
+    pDisplay = XOpenDisplay(0);
+
     while(true) {
         bool valid = false;
         MKInput mki;
@@ -235,7 +282,13 @@ void SenderThreadFunc() {
             if (SendInput(1, &wi, sizeof wi) != 1) {
                 cerr << "\n*** Can't send message\n";
             }
-#endif // __WINDOWS__            
+#endif // __WINDOWS__    
+
+#ifdef __LINUX__ 
+            if (!sendFakeEvent(mki)) {
+                cerr << "\n*** Can't send message\n";
+            }
+#endif // __LINUX__        
         } 
     }
 

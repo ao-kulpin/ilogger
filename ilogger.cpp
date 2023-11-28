@@ -25,6 +25,8 @@
 #include <X11/extensions/record.h>
 #include <X11/Xlibint.h>
 
+#include "displock.hpp"
+
 #endif // __LINUX__
 
 using namespace std;
@@ -387,8 +389,10 @@ MInput::Button getButton(int n) {
 
 static
 void EventProc (XPointer, XRecordInterceptData *pRecord) {
+    DisplayLocker dl(pDisplay);
+    
     hookRunning = true;
-    if (pRecord->category == XRecordFromServer) {
+    if (pRecord->category == XRecordFromServer && !outSkipper.isSkipped()) {
         const XRecordDatum& data = *(XRecordDatum *) pRecord->data;
         switch(data.type) { 
             case KeyPress:
@@ -423,8 +427,11 @@ void EventProc (XPointer, XRecordInterceptData *pRecord) {
 
             case MotionNotify: {
                 const auto& ptr = data.event.u.keyButtonPointer;
+                auto x = ptr.rootX;
+                auto y = ptr.rootY;
+                mtrack.set(x, y);
                 ow.writeMKI(MKInput(MInput(MInput::Action::move, MInput::Button::none, 
-                                           false, ptr.rootX, ptr.rootY)));
+                                           false, x, y)));
                 break;
             }
 
@@ -450,30 +457,38 @@ int main(int argc, char* argv[]) {
     ow.start();
     outSkipper.start();
 
-    thread senderThread(SenderThreadFunc);
+    ////////////auto xit = XInitThreads();
+    //////// cerr << "XInitThreads: " << xit << endl;
 
-    pDisplay = XOpenDisplay(nullptr);
+    pDisplay = XOpenDisplay(0);
 
     if (!pDisplay) {
         cerr << "\n*** Can't open X11 display\n";
         return 1;
     }
 
-    XRecordClientSpec clients = XRecordAllClients;
-    pRange = ::XRecordAllocRange();
-    pRange->device_events = {KeyPress, MotionNotify};
-    context = ::XRecordCreateContext(pDisplay, XRecordFromServerTime, &clients, 1, &pRange, 1);
+    {
+        DisplayLocker dl(pDisplay);
 
-    if (!XRecordEnableContextAsync(pDisplay, context, EventProc, 0)) {
-      cerr << "\n*** XRecordEnableContextAsync failed\n";
-      return 1;
+        XRecordClientSpec clients = XRecordAllClients;
+        pRange = ::XRecordAllocRange();
+        pRange->device_events = {KeyPress, MotionNotify};
+        context = ::XRecordCreateContext(pDisplay, XRecordFromServerTime, &clients, 1, &pRange, 1);
+
+        if (!XRecordEnableContextAsync(pDisplay, context, EventProc, 0)) {
+           cerr << "\n*** XRecordEnableContextAsync failed\n";
+           return 1;
+        }
     }
+
+    thread senderThread(SenderThreadFunc);
 
     while (hookRunning) {
         XRecordProcessReplies(pDisplay);
         this_thread::sleep_for(1ms);
     }
 
+    XCloseDisplay(pDisplay);
     return 0;
 }
 

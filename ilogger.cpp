@@ -3,6 +3,8 @@
 #include <fcntl.h>
 #include <assert.h>
 #include <thread>
+#include <chrono>
+#include <ctime>
 
 #include "sender.hpp"
 #include "option.hpp"
@@ -38,17 +40,27 @@ MouseTracker mtrack;                        // mouse position stored into the Ac
 
 class OutSkipper {
 private:
+#ifdef __WINDOWS__        
     long long   _nextRunTime = 0;          // time when skipped inerval ends
     long        _skipInterval = 0;         // in 100-nanosecond units;     
+#else // __WINDOWS__
+    chrono::_V2::steady_clock::time_point _skipMoment;  // time of previous non-skipped event
+    int         _skip;              
+
+#endif
 public:
     void    start() {
+#ifdef __WINDOWS__        
         _skipInterval = option.skip() * 10000; // miliiseconds -> 100-nanosecond units
+#else // __WINDOWS__
+        _skip = option.skip();
+#endif  
     }
 
     bool    isSkipped() {
+#ifdef __WINDOWS__
         if (_skipInterval == 0)
             return false;
-#ifdef __WINDOWS__
         SYSTEMTIME st;
         GetSystemTime(&st);
 
@@ -68,9 +80,19 @@ public:
             _nextRunTime = now + _skipInterval;
             return false;
         }
-
-#endif // __WINDOWS__
         return false;        
+#else // __WINDOWS__
+        if (_skip == 0)
+            return false;
+        const auto now = std::chrono::steady_clock::now();    
+        if ((now - _skipMoment) / 1ms < _skip) 
+            // skipping period
+            return true;
+        else {
+            _skipMoment = now;
+            return false;
+        }
+#endif
     }
 };
 

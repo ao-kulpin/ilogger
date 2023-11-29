@@ -2,11 +2,11 @@
 
 difflog() {
 	echo "ilogger cancelled by user. check logs..."
-	diff tlm11.log tlm12.log
+	diff tlk21.log tlk22.log
 	echo "result: " $?
 }
 
 trap "difflog" EXIT
 
-rm tlm12.log
-./ilogger < tlm11.log > tlm12.log
+rm tlk22.log
+./ilogger < tlk21.log > tlk22.log

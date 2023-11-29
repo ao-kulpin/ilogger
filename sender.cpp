@@ -219,8 +219,50 @@ bool sendFakeEvent(const KInput& ki) {
 }
 
 static
+inline
+int getButton(MInput::Button b) {
+    switch (b) {
+        case MInput::Button::left:
+            return 1;
+
+        case MInput::Button::middle:
+            return 2;
+
+        case MInput::Button::right:
+            return 3;
+
+        default:
+            assert(false);
+            return 0;
+    }
+
+}
+
+static
 bool sendFakeEvent(const MInput& mi) {
-    return false;
+    bool res = false;
+    switch (mi._action) {
+        case MInput::Action::press:
+        case MInput::Action::release:
+            res = XTestFakeButtonEvent(pDisplay, getButton(mi._button), 
+                                            mi._action == MInput::Action::press, 0);
+            break;
+
+        case MInput::Action::wheel: {
+            const int wb = mi._wheelUp ? 5 : 4;
+            res =        XTestFakeButtonEvent(pDisplay, wb, true,  0);
+            res = res && XTestFakeButtonEvent(pDisplay, wb, false, 0);
+            break;
+        }
+
+        case MInput::Action::move: 
+            res = XTestFakeMotionEvent(pDisplay, -1, mi._dx, mi._dy, 0);
+            break;
+
+        default:
+            break;
+    }
+    return res;
 }
 
 static

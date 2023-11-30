@@ -121,6 +121,7 @@ public:
         // binary output
         assert(_bin);
         cout.write((const char*) &data, len);
+///////////// cerr << "+++ write "  << len << endl;
         return *this;
     }
 
@@ -139,7 +140,7 @@ public:
 
         writeActPrefix(ownAct);
 
-        if (_bin)
+        if (_bin)   
             write(mki._type);  // 0 - mouse, 1 - keyboard
 
         switch(mki._type) {
@@ -155,6 +156,7 @@ public:
                 assert(false);
                 break;
         }
+        cout.flush();
     }
 
     inline static 

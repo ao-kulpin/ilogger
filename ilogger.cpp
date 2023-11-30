@@ -115,13 +115,15 @@ public:
 #endif // __WINDOWS__        
     }
 
+    static int outsize;        
     template <class T>
     inline 
     OutWriter& write(T& data, unsigned len) {
         // binary output
         assert(_bin);
         cout.write((const char*) &data, len);
-///////////// cerr << "+++ write "  << len << endl;
+outsize += len;
+cerr << "+++ write "  << len  << " " << outsize << endl; 
         return *this;
     }
 
@@ -266,6 +268,9 @@ public:
             cout << "==>";
     }
 };
+
+// static 
+int OutWriter::outsize = 0;
 
 static OutWriter ow;
 

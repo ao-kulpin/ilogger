@@ -4,7 +4,6 @@
 #include <assert.h>
 #include <thread>
 #include <chrono>
-#include <ctime>
 
 #include "sender.hpp"
 #include "option.hpp"
@@ -86,9 +85,10 @@ public:
             return false;
         const auto now = std::chrono::steady_clock::now();    
         if ((now - _skipMoment) / 1ms < _skip) 
-            // skipping period
+            // skipping period is now
             return true;
         else {
+            // skipping periond is out    
             _skipMoment = now;
             return false;
         }

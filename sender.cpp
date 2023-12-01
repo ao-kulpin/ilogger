@@ -215,7 +215,7 @@ static Display* pDisplay = 0;
 
 static
 bool sendFakeEvent(const KInput& ki) {
-    return XTestFakeKeyEvent(pDisplay, ki._vk, ki._action == KInput::Action::press, 0);
+    return XTestFakeKeyEvent(pDisplay, ki._vk, ki._action == KInput::Action::press, CurrentTime);
 }
 
 static
@@ -245,18 +245,18 @@ bool sendFakeEvent(const MInput& mi) {
         case MInput::Action::press:
         case MInput::Action::release:
             res = XTestFakeButtonEvent(pDisplay, getButton(mi._button), 
-                                            mi._action == MInput::Action::press, 0);
+                                            mi._action == MInput::Action::press, CurrentTime);
             break;
 
         case MInput::Action::wheel: {
             const int wb = mi._wheelUp ? 5 : 4;
-            res =        XTestFakeButtonEvent(pDisplay, wb, true,  0);
-            res = res && XTestFakeButtonEvent(pDisplay, wb, false, 0);
+            res =        XTestFakeButtonEvent(pDisplay, wb, true,  CurrentTime);
+            res = res && XTestFakeButtonEvent(pDisplay, wb, false, CurrentTime);
             break;
         }
 
         case MInput::Action::move: 
-            res = XTestFakeMotionEvent(pDisplay, -1, mi._dx, mi._dy, 0);
+            res = XTestFakeMotionEvent(pDisplay, -1, mi._dx, mi._dy, CurrentTime);
             break;
 
         default:
@@ -291,7 +291,14 @@ bool sendFakeEvent(const MKInput& mki) {
 
 void SenderThreadFunc() {
     ir.start();
+
+#ifdef __LINUX__    
     pDisplay = XOpenDisplay(0);
+    if (!pDisplay) {
+        cerr << "\n*** Can't open X11 display for the sender\n";
+        return;
+    }
+#endif // __LINUX__    
 
     while(true) {
         bool valid = false;
@@ -335,6 +342,10 @@ void SenderThreadFunc() {
     }
 
     cerr << "\n*** Sender's thread ended\n";
+
+#ifdef __LINUX__    
+    XCloseDisplay(pDisplay);
+#endif // __LINUX__    
 }
 
 static bool ParseLine(const string line, MKInput& mki) {

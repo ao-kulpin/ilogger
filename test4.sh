@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+#	Run with DISABLED Wayland
+#
 
 difflog() {
 	echo "ilogger cancelled by user. check logs..."

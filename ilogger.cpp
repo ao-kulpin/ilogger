@@ -48,9 +48,7 @@ MouseTracker mtrack;                        // mouse position stored into the Ac
 
 class OutSkipper {
 private:
-#ifndef __MACOS__
-    chrono::_V2::steady_clock::time_point _skipMoment;  // time of previous non-skipped event
-#endif // __MACOS__    
+    decltype(std::chrono::steady_clock::now()) _skipMoment;
     int         _skip;              
 public:
     void    start() {
@@ -58,13 +56,11 @@ public:
     }
 
     bool    isSkipped() {
-#ifdef __MACOS__
-        return false;
-#else // __MACOS__                
         if (_skip == 0)
             return false;
+        static const chrono::milliseconds ms1(1);            
         const auto now = std::chrono::steady_clock::now();    
-        if ((now - _skipMoment) / 1ms < _skip) 
+        if ((now - _skipMoment) / ms1 < _skip) 
             // skipping period is now
             return true;
         else {
@@ -72,7 +68,6 @@ public:
             _skipMoment = now;
             return false;
         }
-#endif // MACOS        
     }
 };
 

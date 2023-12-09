@@ -1,4 +1,6 @@
-﻿#include <iostream>
+﻿#define __MACOS__ 1
+
+#include <iostream>
 #include <cstring>
 #include <fcntl.h>
 #include <assert.h>
@@ -30,6 +32,13 @@
 
 #endif // __LINUX__
 
+#ifdef __MACOS__
+
+#include <ApplicationServices/ApplicationServices.h>
+
+#endif // __MACOS__
+
+
 using namespace std;
 
 Option       option;
@@ -39,7 +48,9 @@ MouseTracker mtrack;                        // mouse position stored into the Ac
 
 class OutSkipper {
 private:
+#ifndef __MACOS__
     chrono::_V2::steady_clock::time_point _skipMoment;  // time of previous non-skipped event
+#endif // __MACOS__    
     int         _skip;              
 public:
     void    start() {
@@ -47,6 +58,9 @@ public:
     }
 
     bool    isSkipped() {
+#ifdef __MACOS__
+        return false;
+#else // __MACOS__                
         if (_skip == 0)
             return false;
         const auto now = std::chrono::steady_clock::now();    
@@ -58,6 +72,7 @@ public:
             _skipMoment = now;
             return false;
         }
+#endif // MACOS        
     }
 };
 
@@ -486,3 +501,46 @@ int main(int argc, char* argv[]) {
 }
 
 #endif // __LINUX__
+
+#ifdef __MACOS__
+
+static
+CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
+
+    return event;
+}
+ 
+int main(int argc, char* argv[]) {
+    if (!option.acceptArgs(argc, argv)) {
+        cerr << "\n*** Invalid arguments: ";
+        for (int i = 1; i < argc; ++i)
+            cerr << " " << argv[i];
+        cout << endl;
+
+        return 1;
+    }
+
+    ow.start();
+    outSkipper.start();
+
+    CFMachPortRef eventTap = CGEventTapCreate(kCGSessionEventTap, kCGHeadInsertEventTap, kCGEventTapOptionDefault, 
+                                                kCGEventMaskForAllEvents, eventCallback, 0);
+
+    if (!eventTap) {
+        std::cerr << "Failed to create event tap" << std::endl;
+        return 1;
+    }
+
+    CFRunLoopSourceRef runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0);
+    
+    CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopCommonModes);
+    
+    CFRunLoopRun();
+    
+    CFRelease(runLoopSource);
+    CFRelease(eventTap);
+ 
+
+}
+
+#endif // __MACOS__

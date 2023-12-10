@@ -501,6 +501,59 @@ int main(int argc, char* argv[]) {
 
 static
 CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
+    switch(type) {
+        case kCGEventMouseMoved: {
+            CGPoint ml = CGEventGetLocation(event);
+            ow.writeMKI(MKInput(MInput(MInput::Action::move, MInput::Button::none, 
+                                           false, ml.x, ml.y)));
+            break;
+        }
+
+        case kCGEventLeftMouseDown: 
+            ow.writeMKI(MKInput(MInput(MInput::Action::press, MInput::Button::left)));
+            break;
+
+        case kCGEventLeftMouseUp: 
+            ow.writeMKI(MKInput(MInput(MInput::Action::release, MInput::Button::left)));
+            break;
+
+        case kCGEventRightMouseDown: 
+            ow.writeMKI(MKInput(MInput(MInput::Action::press, MInput::Button::right)));
+            break;
+
+        case kCGEventRightMouseUp: 
+            ow.writeMKI(MKInput(MInput(MInput::Action::release, MInput::Button::right)));
+            break;
+
+        case kCGEventOtherMouseDown: 
+            if (2 == CGEventGetIntegerValueField(event, kCGMouseEventButtonNumber))
+                // middle button
+                ow.writeMKI(MKInput(MInput(MInput::Action::press, MInput::Button::middle)));
+            break;
+
+        case kCGEventOtherMouseUp: 
+            if (2 == CGEventGetIntegerValueField(event, kCGMouseEventButtonNumber))
+                // middle button
+                ow.writeMKI(MKInput(MInput(MInput::Action::release, MInput::Button::middle)));
+            break;
+
+        case kCGEventKeyDown:
+            ow.writeMKI(MKInput(KInput(KInput::Action::press, CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode))));
+            break;
+
+        case kCGEventKeyUp:
+            ow.writeMKI(MKInput(KInput(KInput::Action::release, CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode))));
+            break;
+
+        case kCGEventFlagsChanged:
+            cerr << "\nkCGEventFlagsChanged: " << CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode) 
+             << " / "  << CGEventGetIntegerValueField(event,  kCGKeyboardEventKeyboardType) << endl;
+            break;
+
+        default:
+            cerr << "\nUnknown: " << type << endl;
+            break;
+    }
 
     return event;
 }
@@ -534,8 +587,8 @@ int main(int argc, char* argv[]) {
     
     CFRelease(runLoopSource);
     CFRelease(eventTap);
- 
-
+    
+    return 0;
 }
 
 #endif // __MACOS__

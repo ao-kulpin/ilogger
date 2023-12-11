@@ -111,8 +111,10 @@ public:
 
     void writeMKI(const MKInput& mki) {
         const bool ownAct = actionStore.check(mki, mtrack.getX(), mtrack.getY());
-        if (ownAct && _act == Option::OwnAction::skip)
-            // skipped with --ownacton skip
+        if (ownAct && _act == Option::OwnAction::skip ||
+              // skipped with --ownacton skip
+            outSkipper.isSkipped ())
+              // skipped with --skip n
             return;
 
         writeActPrefix(ownAct);
@@ -251,7 +253,7 @@ static OutWriter ow;
 #ifdef __WINDOWS__
 
 LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
-    if (nCode >= 0 && !outSkipper.isSkipped()) {
+    if (nCode >= 0) {
         if (wParam == WM_KEYDOWN) {
             KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
             ow.writeMKI(MKInput(KInput(KInput::Action::press, kbdStruct->vkCode)));
@@ -267,7 +269,7 @@ LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
 
 LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
 
-    if (nCode >= 0  && !outSkipper.isSkipped()) {
+    if (nCode >= 0) {
         if (wParam == WM_LBUTTONDOWN || wParam == WM_RBUTTONDOWN || wParam == WM_MBUTTONDOWN) {
             MInput::Button button = MInput::Button::none;
 
@@ -395,7 +397,7 @@ void EventProc (XPointer, XRecordInterceptData *pRecord) {
     DisplayLocker dl(pDisplay);
     
     hookRunning = true;
-    if (pRecord->category == XRecordFromServer && !outSkipper.isSkipped()) {
+    if (pRecord->category == XRecordFromServer) {
         const XRecordDatum& data = *(XRecordDatum *) pRecord->data;
         switch(data.type) { 
             case KeyPress:
@@ -529,13 +531,18 @@ CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
             if (2 == CGEventGetIntegerValueField(event, kCGMouseEventButtonNumber))
                 // middle button
                 ow.writeMKI(MKInput(MInput(MInput::Action::press, MInput::Button::middle)));
-            break;
+            break;  
 
         case kCGEventOtherMouseUp: 
             if (2 == CGEventGetIntegerValueField(event, kCGMouseEventButtonNumber))
                 // middle button
                 ow.writeMKI(MKInput(MInput(MInput::Action::release, MInput::Button::middle)));
             break;
+
+        case kCGEventScrollWheel:
+            ow.writeMKI(MKInput(MInput(MInput::Action::wheel, MInput::Button::none, 
+                                       CGEventGetIntegerValueField(event, kCGScrollWheelEventDeltaAxis1) < 0)));
+            break; 
 
         case kCGEventKeyDown:
             ow.writeMKI(MKInput(KInput(KInput::Action::press, CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode))));
@@ -588,7 +595,7 @@ int main(int argc, char* argv[]) {
     CFRelease(runLoopSource);
     CFRelease(eventTap);
     
-    return 0;
+    return 0;           
 }
 
 #endif // __MACOS__

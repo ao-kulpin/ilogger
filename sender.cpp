@@ -337,7 +337,17 @@ void SenderThreadFunc() {
             if (!sendFakeEvent(mki)) {
                 cerr << "\n*** Can't send message\n";
             }
-#endif // __LINUX__        
+#endif // __LINUX__
+
+#ifdef __MACOS__
+            CGEventRef mevent = mki.toMac();
+            if (mevent) {
+                CGEventPost(kCGHIDEventTap, mevent);
+                CFRelease(mevent);
+            } 
+            else
+                cerr << "\n*** Can't send message\n";
+#endif // __MACOS__
         } 
     }
 

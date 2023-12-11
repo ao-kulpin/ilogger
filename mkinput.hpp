@@ -1,3 +1,5 @@
+#define __MACOS__ 1 ///////////////////////////////////////////////
+
 #ifndef __MKINPUT__
 #define __MKINPUT__
 
@@ -5,7 +7,11 @@
 #include <windows.h>
 
 #define MOUSEEVENTF_VIRTUALDESK 0x4000
-#endif
+#endif // __WINDOWS__
+
+#ifdef __MACOS__
+#include <ApplicationServices/ApplicationServices.h>
+#endif // __MACOS__
 
 #include <assert.h>
 
@@ -89,6 +95,89 @@ public:
         }
     }
 #endif // __WINDOWS
+
+#ifdef __MACOS__
+private:
+    CGEventType getType() {
+        switch (_action) {
+            case Action::press:
+                switch(_button) {
+                    case Button::left:
+                        return kCGEventLeftMouseDown;
+
+                    case Button::right:
+                        return kCGEventRightMouseDown;
+
+                    case Button::middle:
+                        return kCGEventOtherMouseDown;
+
+                    default:
+                        assert(false);
+                        return kCGEventNull;
+                }
+
+            case Action::release:
+                switch(_button) {
+                    case Button::left:
+                        return kCGEventLeftMouseUp;
+
+                    case Button::right:
+                        return kCGEventRightMouseUp;
+
+                    case Button::middle:
+                        return kCGEventOtherMouseUp;
+
+                    default:
+                        assert(false);
+                        return kCGEventNull;
+                }
+
+            default:
+                assert(false);
+                return kCGEventNull;
+        }
+    }
+
+    CGMouseButton getButton() {
+        switch(_button) {
+            case Button::left:
+                return kCGMouseButtonLeft;
+
+            case Button::right:
+                return kCGMouseButtonRight;
+
+            default:
+                return kCGMouseButtonCenter;
+                
+        }
+    }
+
+public:
+    CGEventRef toMac() {
+        switch(_action) {
+            case Action::press: 
+            case Action::release: {
+                CGEventRef cge = CGEventCreateMouseEvent(0, getType(), CGPoint{0, 0}, getButton());
+                return cge;
+            }
+
+            case Action::move: {
+                CGEventRef cge = CGEventCreateMouseEvent(0, kCGEventMouseMoved, 
+                                                         CGPoint{CGFloat(_dx), CGFloat(_dy)}, 
+                                                         kCGMouseButtonLeft);
+                return cge;
+            }
+
+            case Action::wheel:
+                return CGEventCreateScrollWheelEvent(0, kCGScrollEventUnitLine, 1, _wheelUp ? -5 : 5);
+
+            default:
+                assert(false);
+                return 0;
+        }
+        return 0;
+    }
+#endif // __MACOS__
 };
 
 class KInput {              // keybord input
@@ -120,10 +209,16 @@ public:
         wki.wVk = _vk;
     }
 #endif // __WINDOWS__
+
+#ifdef __MACOS__
+    inline
+    CGEventRef toMac() {
+        return CGEventCreateKeyboardEvent(NULL, _vk, _action == Action::press);
+    }
+#endif // __MACOS__
 };
 
-class MKInput               // mouse/keyboard input
-{
+class MKInput {              // mouse/keyboard input
 public:
     enum class Type: unsigned char {mouse, keyboard};
     Type    _type;
@@ -170,6 +265,23 @@ public:
         }
     }
 #endif // __WINDOWS__
+
+#ifdef __MACOS__
+    CGEventRef toMac() {
+        switch(_type) {
+            case Type::mouse:
+                return mk._mi.toMac();
+
+            case Type::keyboard:
+                return mk._ki.toMac();
+
+            default:
+                assert(false);    
+                return 0;
+                
+        }
+    }
+#endif // __MACOS__
 };
 
 #endif // __MKINPUT__

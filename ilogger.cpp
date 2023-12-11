@@ -33,9 +33,7 @@
 #endif // __LINUX__
 
 #ifdef __MACOS__
-
 #include <ApplicationServices/ApplicationServices.h>
-
 #endif // __MACOS__
 
 
@@ -558,7 +556,7 @@ CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
             break;
 
         default:
-            cerr << "\nUnknown: " << type << endl;
+            //////// cerr << "\nUnknown: " << type << endl;
             break;
     }
 
@@ -585,6 +583,8 @@ int main(int argc, char* argv[]) {
         std::cerr << "Failed to create event tap" << std::endl;
         return 1;
     }
+
+    thread senderThread(SenderThreadFunc);
 
     CFRunLoopSourceRef runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0);
     

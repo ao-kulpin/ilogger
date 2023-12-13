@@ -506,6 +506,7 @@ CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
     switch(type) {
         case kCGEventMouseMoved: {
             CGPoint ml = CGEventGetLocation(event);
+            mtrack.set(ml.x, ml.y);
             ow.writeMKI(MKInput(MInput(MInput::Action::move, MInput::Button::none, 
                                            false, ml.x, ml.y)));
             break;

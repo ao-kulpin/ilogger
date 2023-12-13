@@ -12,4 +12,4 @@ difflog() {
 trap "difflog" EXIT
 
 rm tlk62.log
-./ilogger < tlk61.log > tlk62.log --ownaction skip 
+./ilogger.app < tlk61.log > tlk62.log --ownaction skip 

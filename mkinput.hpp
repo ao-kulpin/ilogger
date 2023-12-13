@@ -34,7 +34,7 @@ public:
         memset(this, 0, sizeof *this);
     }
 
-#ifdef __WINDOWS__
+#ifdef __WINDOWS__ 
     void toWin(MOUSEINPUT& wmi) {
         memset(&wmi, 0, sizeof wmi);
         switch(_action) {

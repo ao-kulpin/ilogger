@@ -500,6 +500,9 @@ int main(int argc, char* argv[]) {
 
 static
 CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
+    ///////return event;
+    static uint32_t globFlags = 0;
+    uint64_t eventFlags = CGEventGetFlags(event);
     switch(type) {
         case kCGEventMouseMoved: {
             CGPoint ml = CGEventGetLocation(event);
@@ -541,9 +544,12 @@ CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
                                        CGEventGetIntegerValueField(event, kCGScrollWheelEventDeltaAxis1) < 0)));
             break; 
 
-        case kCGEventKeyDown:
+        case kCGEventKeyDown: {
+            cerr << "*** key: " << dec << CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode) 
+                 << " flags: " << hex << CGEventGetFlags(event) << endl;
             ow.writeMKI(MKInput(KInput(KInput::Action::press, CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode))));
             break;
+        }
 
         case kCGEventKeyUp:
             ow.writeMKI(MKInput(KInput(KInput::Action::release, CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode))));
@@ -559,44 +565,44 @@ CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
                 // no related key
                 break;
 
-            auto ef = CGEventGetFlags(event);
-
             bool unknownKey = true;
             bool pressed = false;
+
+            auto updteFlags = [&](uint64_t mask) {
+                unknownKey = false;
+                pressed = (eventFlags & mask);
+                if (pressed)
+                    globFlags |= mask;
+                else
+                    globFlags &= ~mask;
+            };
             switch (ek) {
                 case kVK_Shift:
                 case kVK_RightShift:
-                    unknownKey = false;
-                    pressed = (ef & kCGEventFlagMaskShift);
+                    updteFlags(kCGEventFlagMaskShift);
                     break;
 
                 case kVK_Control:
                 case kVK_RightControl:
-                    unknownKey = false;
-                    pressed = (ef & kCGEventFlagMaskControl);
+                    updteFlags(kCGEventFlagMaskControl);
                     break;
 
                 case kVK_Option:
                 case kVK_RightOption:
-                    unknownKey = false;
-                    pressed = (ef & kCGEventFlagMaskAlternate);
+                    updteFlags(kCGEventFlagMaskAlternate);    
                     break;
 
                 case kVK_Command:
                 case kVK_RightCommand:
-                    unknownKey = false;
-                    pressed = (ef & kCGEventFlagMaskCommand);
+                    updteFlags(kCGEventFlagMaskCommand);    
                     break;
 
                 case kVK_Function:
-                    unknownKey = false;
-                    pressed = (ef & kCGEventFlagMaskSecondaryFn);
+                    updteFlags(kCGEventFlagMaskSecondaryFn);    
                     break;
 
-
                 case kVK_CapsLock:
-                    unknownKey = false;
-                    pressed = (ef & kCGEventFlagMaskAlphaShift);
+                    updteFlags(kCGEventFlagMaskAlphaShift);    
                     break;
 
                 default:
@@ -612,10 +618,12 @@ CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
         }
 
         default:
-            //////// cerr << "\nUnknown: " << type << endl;
+            cerr << "\nUnknown event: " << type << endl;
             break;
     }
 
+    eventFlags |= globFlags;
+    CGEventSetFlags(event, eventFlags);
     return event;
 }
  

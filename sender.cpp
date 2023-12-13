@@ -352,6 +352,7 @@ void SenderThreadFunc() {
     }
 
     cerr << "\n*** Sender's thread ended\n";
+/////while(true);    
 
 #ifdef __LINUX__    
     XCloseDisplay(pDisplay);

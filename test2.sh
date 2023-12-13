@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-#	Run with DISABLED Wayland
+#	Run onLinux with DISABLED Wayland
 #
 
 difflog() {

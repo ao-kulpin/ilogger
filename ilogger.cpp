@@ -20,7 +20,6 @@
 #endif // __WINDOWS__
 
 #ifdef __LINUX__
-
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <linux/input.h>
@@ -29,11 +28,11 @@
 #include <X11/Xlibint.h>
 
 #include "displock.hpp"
-
 #endif // __LINUX__
 
 #ifdef __MACOS__
 #include <ApplicationServices/ApplicationServices.h>
+#include <Carbon/Carbon.h>
 #endif // __MACOS__
 
 
@@ -550,10 +549,67 @@ CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
             ow.writeMKI(MKInput(KInput(KInput::Action::release, CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode))));
             break;
 
-        case kCGEventFlagsChanged:
+        case kCGEventFlagsChanged: {
             cerr << "\nkCGEventFlagsChanged: " << CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode) 
-             << " / "  << CGEventGetIntegerValueField(event,  kCGKeyboardEventKeyboardType) << endl;
+             << " / " << hex << CGEventGetIntegerValueField(event,  kCGKeyboardEventKeyboardType) << endl
+             << CGEventGetFlags(event) << endl;
+
+            auto ek = CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
+            if (ek == 255)
+                // no related key
+                break;
+
+            auto ef = CGEventGetFlags(event);
+
+            bool unknownKey = true;
+            bool pressed = false;
+            switch (ek) {
+                case kVK_Shift:
+                case kVK_RightShift:
+                    unknownKey = false;
+                    pressed = (ef & kCGEventFlagMaskShift);
+                    break;
+
+                case kVK_Control:
+                case kVK_RightControl:
+                    unknownKey = false;
+                    pressed = (ef & kCGEventFlagMaskControl);
+                    break;
+
+                case kVK_Option:
+                case kVK_RightOption:
+                    unknownKey = false;
+                    pressed = (ef & kCGEventFlagMaskAlternate);
+                    break;
+
+                case kVK_Command:
+                case kVK_RightCommand:
+                    unknownKey = false;
+                    pressed = (ef & kCGEventFlagMaskCommand);
+                    break;
+
+                case kVK_Function:
+                    unknownKey = false;
+                    pressed = (ef & kCGEventFlagMaskSecondaryFn);
+                    break;
+
+
+                case kVK_CapsLock:
+                    unknownKey = false;
+                    pressed = (ef & kCGEventFlagMaskAlphaShift);
+                    break;
+
+                default:
+                    break;                        
+            }
+            if (unknownKey)
+                cerr << "\n*** Unknown modifier key: " << ek << endl;
+            else
+                ow.writeMKI(MKInput(KInput(
+                                        pressed ? KInput::Action::press : KInput::Action::release, 
+                                        ek)));
             break;
+        }
 
         default:
             //////// cerr << "\nUnknown: " << type << endl;

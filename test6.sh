@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+#	Run on Linux with DISABLED Wayland
+#
 
 difflog() {
 	echo "ilogger cancelled by user. check logs..."
@@ -12,4 +15,4 @@ difflog() {
 trap "difflog" EXIT
 
 rm tlk62.log
-./ilogger.app < tlk61.log > tlk62.log --ownaction skip 
+./ilogger < tlk61.log > tlk62.log --ownaction skip 

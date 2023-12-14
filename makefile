@@ -7,3 +7,6 @@ linux:
 
 macos:
 	g++  -std=c++11 -framework ApplicationServices -D__MACOS__  ilogger.cpp sender.cpp option.cpp -o ilogger.app
+	@echo 
+	@echo 'Build Succeeded: ilogger.app'
+	@echo '****************************'

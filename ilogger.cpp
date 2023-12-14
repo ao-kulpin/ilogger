@@ -94,8 +94,6 @@ public:
         // binary output
         assert(_bin);
         cout.write((const char*) &data, len);
-///// outsize += len;
-///// cerr << "+++ write "  << len  << " " << outsize << endl; 
         return *this;
     }
 
@@ -384,7 +382,6 @@ MInput::Button getButton(int n) {
             return MInput::Button::right;
 
         default:
-        /////// cerr << "n: " << n << endl;
             return MInput::Button::none;
     }
 }
@@ -458,9 +455,6 @@ int main(int argc, char* argv[]) {
 
     ow.start();
     outSkipper.start();
-
-    ////////////auto xit = XInitThreads();
-    //////// cerr << "XInitThreads: " << xit << endl;
 
     pDisplay = XOpenDisplay(0);
 
@@ -546,8 +540,6 @@ CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
             break; 
 
         case kCGEventKeyDown: {
-            cerr << "*** key: " << dec << CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode) 
-                 << " flags: " << hex << CGEventGetFlags(event) << endl;
             ow.writeMKI(MKInput(KInput(KInput::Action::press, CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode))));
             break;
         }
@@ -557,10 +549,6 @@ CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
             break;
 
         case kCGEventFlagsChanged: {
-            cerr << "\nkCGEventFlagsChanged: " << CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode) 
-             << " / " << hex << CGEventGetIntegerValueField(event,  kCGKeyboardEventKeyboardType) << endl
-             << CGEventGetFlags(event) << endl;
-
             auto ek = CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
             if (ek == 255)
                 // no related key
@@ -619,7 +607,7 @@ CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
         }
 
         default:
-            cerr << "\nUnknown event: " << type << endl;
+            //////// cerr << "\nUnknown event: " << type << endl;
             break;
     }
 

@@ -1,5 +1,3 @@
-#define __MACOS__ 1 ///////////////////////////////////////////////
-
 #ifndef __MKINPUT__
 #define __MKINPUT__
 

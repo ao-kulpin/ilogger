@@ -1,6 +1,4 @@
-﻿#define __MACOS__ 1
-
-#include <iostream>
+﻿#include <iostream>
 #include <cstring>
 #include <fcntl.h>
 #include <assert.h>

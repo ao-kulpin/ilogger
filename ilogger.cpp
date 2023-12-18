@@ -246,15 +246,16 @@ static OutWriter ow;
 #ifdef __WINDOWS__
 
 LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
+    const auto vkc = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam)->vkCode;
     if (nCode >= 0) {
-        if (wParam == WM_KEYDOWN) {
-            KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
-            ow.writeMKI(MKInput(KInput(KInput::Action::press, kbdStruct->vkCode)));
+        if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) {
+            ow.writeMKI(MKInput(KInput(KInput::Action::press, vkc)));
         }
         else if (wParam == WM_KEYUP) {
-            KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
-            ow.writeMKI(MKInput(KInput(KInput::Action::release, kbdStruct->vkCode)));
-        }
+            ow.writeMKI(MKInput(KInput(KInput::Action::release, vkc)));
+        } 
+        //////else
+        ////cerr << "\n*** unknown key " << hex << wParam << " vk " << kbdStruct->vkCode << endl;
     }
 
     return CallNextHookEx(NULL, nCode, wParam, lParam);

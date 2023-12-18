@@ -5,8 +5,10 @@ windows:
 	@echo ****************************
 
 linux:
-#	g++  -D__LINUX__  ilogger.cpp sender.cpp option.cpp -o ilogger -lX11 -lXt -lX11  -lXext -lXi -lXtst
-	g++  -D__LINUX__  ilogger.cpp sender.cpp option.cpp -o ilogger -lX11 -lXtst
+	g++  -std=c++11 -D__LINUX__  ilogger.cpp sender.cpp option.cpp -o ilogger -lX11 -lXtst
+	@echo '************************'
+	@echo 'Build Succeeded: ilogger'
+	@echo '************************'
 
 macos:
 	g++  -std=c++11 -framework ApplicationServices -D__MACOS__  ilogger.cpp sender.cpp option.cpp -o ilogger.app

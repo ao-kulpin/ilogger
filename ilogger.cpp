@@ -478,8 +478,10 @@ int main(int argc, char* argv[]) {
     thread senderThread(SenderThreadFunc);
 
     while (hookRunning) {
+        static const chrono::milliseconds ms1(1);            
+
         XRecordProcessReplies(pDisplay);
-        this_thread::sleep_for(1ms);
+        this_thread::sleep_for(ms1);
     }
 
     XCloseDisplay(pDisplay);
